@@ -1,0 +1,11 @@
+fastapi==0.142.4
+starlette==1.7.0
+mcp==2.3.0
+pydantic==2.13.5
+playwright==1.63.0
+Pillow==12.3.0
+uvicorn==0.54.0
+pyinstaller==6.22.3
+httpx==0.28.1
+python-multipart==0.0.32
+imageio-ffmpeg==0.6.0
