@@ -1,0 +1,207 @@
+{
+  "voice_id": "4a81bbbb5cd44f22922bf934cb93b369",
+  "voice_title": "일반여성2",
+  "scenes": [
+    {
+      "images": [
+        3,
+        0
+      ],
+      "text": "이런 물놀이 숙소, 어때요?",
+      "task_id": "3fc193b68a7945bc88b6fb3ee37222e3",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/3fc193b68a7945bc88b6fb3ee37222e3.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 35,
+      "audio": "output/audio/00.mp3",
+      "start": 0.0,
+      "duration": 2.533333333333333,
+      "audio_duration": 2.2787916666666668
+    },
+    {
+      "images": [
+        4,
+        6
+      ],
+      "text": "구불구불 이어지는 야외 풀에,",
+      "task_id": "c2eb1ffe3a7445a99be82e70d13c101a",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/c2eb1ffe3a7445a99be82e70d13c101a.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 40,
+      "audio": "output/audio/01.mp3",
+      "start": 2.533333333333333,
+      "duration": 2.7333333333333334,
+      "audio_duration": 2.4828125
+    },
+    {
+      "images": [
+        5,
+        7
+      ],
+      "text": "탁 트인 공간까지.",
+      "task_id": "5610345fea97405e8bfbc86254955279",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/5610345fea97405e8bfbc86254955279.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 24,
+      "audio": "output/audio/02.mp3",
+      "start": 5.266666666666667,
+      "duration": 1.9666666666666666,
+      "audio_duration": 1.683875
+    },
+    {
+      "images": [
+        9
+      ],
+      "text": "실내에서도 물놀이하고,",
+      "task_id": "165cb8e831214789b95efbb1d7d734af",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/165cb8e831214789b95efbb1d7d734af.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 32,
+      "audio": "output/audio/03.mp3",
+      "start": 7.233333333333333,
+      "duration": 2.2666666666666666,
+      "audio_duration": 1.997
+    },
+    {
+      "images": [
+        8
+      ],
+      "text": "밤에는 분위기가 또 달라져요.",
+      "task_id": "1db8a3dccd904012800744061883143a",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/1db8a3dccd904012800744061883143a.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 40,
+      "audio": "output/audio/04.mp3",
+      "start": 9.5,
+      "duration": 2.6333333333333333,
+      "audio_duration": 2.3513125
+    },
+    {
+      "images": [
+        12,
+        15,
+        16
+      ],
+      "text": "객실에서는 물가 풍경 보며 쉬고,",
+      "task_id": "2ededabf29ea4aaa83faf4d38087ab30",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/2ededabf29ea4aaa83faf4d38087ab30.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 44,
+      "audio": "output/audio/05.mp3",
+      "start": 12.133333333333333,
+      "duration": 2.8666666666666667,
+      "audio_duration": 2.5896666666666666
+    },
+    {
+      "images": [
+        13
+      ],
+      "text": "욕실도 차분한 느낌.",
+      "task_id": "82e50b92b4bf4688bfb4156bae6dd27d",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/82e50b92b4bf4688bfb4156bae6dd27d.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 27,
+      "audio": "output/audio/06.mp3",
+      "start": 15.0,
+      "duration": 2.2666666666666666,
+      "audio_duration": 1.9972916666666667
+    },
+    {
+      "images": [
+        10,
+        11
+      ],
+      "text": "먹음직스러운 음식에,",
+      "task_id": "044061a1c251416392eb5df2b91177ad",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/044061a1c251416392eb5df2b91177ad.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 29,
+      "audio": "output/audio/07.mp3",
+      "start": 17.266666666666666,
+      "duration": 2.066666666666667,
+      "audio_duration": 1.787625
+    },
+    {
+      "images": [
+        14
+      ],
+      "text": "간식 고르는 재미까지.",
+      "task_id": "e99dfebd26d54a36bd1c00221dd39b14",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/e99dfebd26d54a36bd1c00221dd39b14.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 30,
+      "audio": "output/audio/08.mp3",
+      "start": 19.333333333333332,
+      "duration": 2.3,
+      "audio_duration": 2.042520833333333
+    },
+    {
+      "images": [
+        2,
+        1
+      ],
+      "text": "다음 여행은 여기, 저장해 두세요.",
+      "task_id": "e08e215f32024a08acff6083c0693db4",
+      "audio_url": "https://platform.r2.fish.audio/tasks/2026-10-08/e08e215f32024a08acff6083c0693db4.mp3",
+      "voice": {
+        "id": "4a81bbbb5cd44f22922bf934cb93b369",
+        "title": "일반여성2"
+      },
+      "credits_charged": 45,
+      "audio": "output/audio/09.mp3",
+      "start": 21.633333333333333,
+      "duration": 2.8666666666666667,
+      "audio_duration": 2.59325
+    }
+  ],
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "duration": 24.5,
+  "photos": [
+    "Data/Test_Data/KakaoTalk_20261008_175016600.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_01.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_02.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_03.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_04.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_05.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_06.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_07.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_08.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_09.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_10.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_11.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_12.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_13.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_14.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_15.jpg",
+    "Data/Test_Data/KakaoTalk_20261008_175016600_16.jpg"
+  ],
+  "audio_speed": 0.75
+}
