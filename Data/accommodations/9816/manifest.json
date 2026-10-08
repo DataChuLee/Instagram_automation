@@ -1,0 +1,1386 @@
+{
+  "schema_version": 1,
+  "accommodation_id": "9816",
+  "name": "여수 돌산 더 호텔 수",
+  "source_url": "https://www.yeogi.com/domestic-accommodations/9816",
+  "collected_at": "2026-10-08T11:35:11.269180+00:00",
+  "status": "complete",
+  "images": [
+    {
+      "sha256": "e431d1b5a45902a3e2bf9a96223fa7c89eeb7d3ab990bc2dbcb27b35a8f686ee",
+      "width": 1431,
+      "height": 805,
+      "format": "PNG",
+      "bytes": 2765910,
+      "url": "https://image.withstatic.com/giant/2026/09/22/7e/7ec639f911f34d91a123263f93b4c710.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "대표 사진",
+          "room_name": null
+        }
+      ],
+      "file": "images/e431d1b5a45902a3e2bf9a96223fa7c89eeb7d3ab990bc2dbcb27b35a8f686ee.png",
+      "downloaded_at": "2026-10-08T11:31:30.438527+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "0d68b105d5aceea82b43bcdc2f3d62569d81a2c95989887f73bc91fc3a8d1a0b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 2539747,
+      "url": "https://image.withstatic.com/393/40/313/f273f5e1cfcb4920860b0b5872fe7271.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "전경",
+          "room_name": null
+        }
+      ],
+      "file": "images/0d68b105d5aceea82b43bcdc2f3d62569d81a2c95989887f73bc91fc3a8d1a0b.jpg",
+      "downloaded_at": "2026-10-08T11:31:32.449535+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "fc53356d4b46ba5656f07526f189a44607e66f12658ec857fb6ddf05ffa66f67",
+      "width": 1440,
+      "height": 810,
+      "format": "PNG",
+      "bytes": 2687454,
+      "url": "https://image.withstatic.com/giant/2026/09/22/51/51cd3e1de7b44671b6a470daf6310dba.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": null,
+          "room_name": null
+        }
+      ],
+      "file": "images/fc53356d4b46ba5656f07526f189a44607e66f12658ec857fb6ddf05ffa66f67.png",
+      "downloaded_at": "2026-10-08T11:31:34.605519+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "a095a7a5a7ed8279872579def9b0765f2d24c7c0c09860a9180d80603dfc9029",
+      "width": 960,
+      "height": 540,
+      "format": "JPEG",
+      "bytes": 201763,
+      "url": "https://image.withstatic.com/111/282/430/dc19de8c8eb547f29f6b6f979b56f3ca.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "전경",
+          "room_name": null
+        }
+      ],
+      "file": "images/a095a7a5a7ed8279872579def9b0765f2d24c7c0c09860a9180d80603dfc9029.jpg",
+      "downloaded_at": "2026-10-08T11:31:36.102759+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "8b302ec84aac91732d99d4c150862b23a90c21991ce4d6a4de9ed0a5b17fbf80",
+      "width": 1920,
+      "height": 1080,
+      "format": "PNG",
+      "bytes": 2482671,
+      "url": "https://image.withstatic.com/property/2025/08/07/4e/4e5d84c8c3af420f83d16727d9b697d3.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "루프탑 수영장",
+          "room_name": null
+        }
+      ],
+      "file": "images/8b302ec84aac91732d99d4c150862b23a90c21991ce4d6a4de9ed0a5b17fbf80.png",
+      "downloaded_at": "2026-10-08T11:31:37.846751+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "76f6c623f669b97f5713ad0f9eb978a7328567fb3c60c3c5ccae327e12f65e54",
+      "width": 1920,
+      "height": 1080,
+      "format": "PNG",
+      "bytes": 2737226,
+      "url": "https://image.withstatic.com/property/2025/08/07/4b/4b0a5a106c01453fb4516919a0adf036.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "루프탑 수영장",
+          "room_name": null
+        }
+      ],
+      "file": "images/76f6c623f669b97f5713ad0f9eb978a7328567fb3c60c3c5ccae327e12f65e54.png",
+      "downloaded_at": "2026-10-08T11:31:39.826128+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "5727c24404e8116b146226c9958528d2af74119c977d88186c4ad62400c803b7",
+      "width": 960,
+      "height": 540,
+      "format": "JPEG",
+      "bytes": 217003,
+      "url": "https://image.withstatic.com/property/2025/08/07/25/256fba5a90cd48308b13f3859724af43.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "루프탑",
+          "room_name": null
+        }
+      ],
+      "file": "images/5727c24404e8116b146226c9958528d2af74119c977d88186c4ad62400c803b7.jpg",
+      "downloaded_at": "2026-10-08T11:31:40.931331+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "e51400c21e2df262e10b80a6cd4a4284d2e38874f35321ba96fb77feef04696f",
+      "width": 1920,
+      "height": 1080,
+      "format": "PNG",
+      "bytes": 2974387,
+      "url": "https://image.withstatic.com/property/2025/08/07/97/97f4d39743514a58834d794591631513.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "루프탑",
+          "room_name": null
+        }
+      ],
+      "file": "images/e51400c21e2df262e10b80a6cd4a4284d2e38874f35321ba96fb77feef04696f.png",
+      "downloaded_at": "2026-10-08T11:31:42.855178+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "eb46b5dbd4f1649b6f0dec98009bdec16ea5b1c50ba8dbde0f86b4d5b0e3cde7",
+      "width": 1920,
+      "height": 1080,
+      "format": "PNG",
+      "bytes": 2009150,
+      "url": "https://image.withstatic.com/property/2025/08/07/06/06e5da2d31c440a49106d0c6b06f59bd.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "루프탑",
+          "room_name": null
+        }
+      ],
+      "file": "images/eb46b5dbd4f1649b6f0dec98009bdec16ea5b1c50ba8dbde0f86b4d5b0e3cde7.png",
+      "downloaded_at": "2026-10-08T11:31:44.429380+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "e12b185b4f0e139ede1ecbf6e99e9d6a64c8e56696e7c34c09a11dd2fed04cb9",
+      "width": 1920,
+      "height": 1080,
+      "format": "PNG",
+      "bytes": 3299488,
+      "url": "https://image.withstatic.com/property/2025/08/18/e7/e73a3c80905f4d83ad9dcf9fe35ced01.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "부대시설",
+          "room_name": null
+        }
+      ],
+      "file": "images/e12b185b4f0e139ede1ecbf6e99e9d6a64c8e56696e7c34c09a11dd2fed04cb9.png",
+      "downloaded_at": "2026-10-08T11:31:46.124349+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "1cd1c7fc1d8dbaa1332e981ea00748bc03ce7610beb70090108240353a7fd0e2",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 2075556,
+      "url": "https://image.withstatic.com/property/2025/08/18/d1/d141d39381934c1aa8692cec6912faf0.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "부대시설",
+          "room_name": null
+        }
+      ],
+      "file": "images/1cd1c7fc1d8dbaa1332e981ea00748bc03ce7610beb70090108240353a7fd0e2.jpg",
+      "downloaded_at": "2026-10-08T11:31:47.632531+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "7c659f31dffd7197974fc0b8b66262961a2d34b47153ffd365efede7dc3f63a4",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1848368,
+      "url": "https://image.withstatic.com/property/2025/08/18/a3/a35e273b13834ea7b912c558337b04d2.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "부대시설",
+          "room_name": null
+        }
+      ],
+      "file": "images/7c659f31dffd7197974fc0b8b66262961a2d34b47153ffd365efede7dc3f63a4.jpg",
+      "downloaded_at": "2026-10-08T11:31:49.280462+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "b35b0b76fc287df3de9db94d2f4e01cfbb6c1b752741fcaef2ac29d3c6e0340e",
+      "width": 1915,
+      "height": 1076,
+      "format": "PNG",
+      "bytes": 2900528,
+      "url": "https://image.withstatic.com/property/2025/08/07/d3/d3db2c3f683b4acf80d08843b908ea2a.png",
+      "labels": [
+        {
+          "category": "property",
+          "title": "편의점",
+          "room_name": null
+        }
+      ],
+      "file": "images/b35b0b76fc287df3de9db94d2f4e01cfbb6c1b752741fcaef2ac29d3c6e0340e.png",
+      "downloaded_at": "2026-10-08T11:31:51.605067+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "6d55fb0411b4e5fa09332ad7089b02db031d4152c69371724f230c48ad9b5b66",
+      "width": 1920,
+      "height": 1280,
+      "format": "JPEG",
+      "bytes": 193111,
+      "url": "https://image.withstatic.com/290/84/407/334a228b372446c895886c864d977864.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/6d55fb0411b4e5fa09332ad7089b02db031d4152c69371724f230c48ad9b5b66.jpg",
+      "downloaded_at": "2026-10-08T11:31:52.894475+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "31d8e7f617d4891386fcb2f0076d99242e1b705681083193040ba26098c58913",
+      "width": 1920,
+      "height": 1280,
+      "format": "JPEG",
+      "bytes": 159899,
+      "url": "https://image.withstatic.com/319/394/91/e0089c134b4140528918fd26b003a6dd.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/31d8e7f617d4891386fcb2f0076d99242e1b705681083193040ba26098c58913.jpg",
+      "downloaded_at": "2026-10-08T11:31:54.091016+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "26f9b56cf73a437195e07ec0681aef176a7a290a2c833484bcdd473bc71910a2",
+      "width": 1920,
+      "height": 1079,
+      "format": "JPEG",
+      "bytes": 286463,
+      "url": "https://image.withstatic.com/172/404/413/a708fd08c1ce4b50bb94fe4f5289bbb7.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/26f9b56cf73a437195e07ec0681aef176a7a290a2c833484bcdd473bc71910a2.jpg",
+      "downloaded_at": "2026-10-08T11:31:55.303028+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "e5f3f764fc0dc463e466595c618e26f61f2f02d0cb8d9756ed7aa10c2d5b929b",
+      "width": 1920,
+      "height": 1079,
+      "format": "JPEG",
+      "bytes": 109907,
+      "url": "https://image.withstatic.com/325/211/477/596856ea225f4f83a84d96236205f107.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/e5f3f764fc0dc463e466595c618e26f61f2f02d0cb8d9756ed7aa10c2d5b929b.jpg",
+      "downloaded_at": "2026-10-08T11:31:56.534258+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "cff5c881e545cdc610c815356956fe91be9eccb7075e446a97314da66f431aa8",
+      "width": 1920,
+      "height": 1079,
+      "format": "JPEG",
+      "bytes": 119787,
+      "url": "https://image.withstatic.com/408/191/133/5e5590bdc4874ca3b1d1f854c49965c2.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/cff5c881e545cdc610c815356956fe91be9eccb7075e446a97314da66f431aa8.jpg",
+      "downloaded_at": "2026-10-08T11:31:57.717857+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "bd48a300f14e4dc6744e139828c1350e614b96e7c1925c581eca67e164b372bd",
+      "width": 1920,
+      "height": 1440,
+      "format": "JPEG",
+      "bytes": 383016,
+      "url": "https://image.withstatic.com/49/459/462/4055ed3ef08e4a6ca18223e60c4f7ebd.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/bd48a300f14e4dc6744e139828c1350e614b96e7c1925c581eca67e164b372bd.jpg",
+      "downloaded_at": "2026-10-08T11:31:58.968108+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "affe6ba131b35cfd97c1ea3be326e45a2f0e7e21fd5aff81a8f3a57aa8ed5258",
+      "width": 1920,
+      "height": 1079,
+      "format": "JPEG",
+      "bytes": 206637,
+      "url": "https://image.withstatic.com/31/318/396/5a9c6737bda04f32a36c2c725384c361.jpg",
+      "labels": [
+        {
+          "category": "property",
+          "title": "기타",
+          "room_name": null
+        }
+      ],
+      "file": "images/affe6ba131b35cfd97c1ea3be326e45a2f0e7e21fd5aff81a8f3a57aa8ed5258.jpg",
+      "downloaded_at": "2026-10-08T11:32:00.187552+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "0bb7c4eaccfd21974412d9753fc1371265ef64d6fdcd8d932bb99237932c3b1d",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1314784,
+      "url": "https://image.withstatic.com/145/108/370/f326967a4a8a4ae8bbc834aa3e0bec19.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 더블 (브릿지뷰)"
+        }
+      ],
+      "file": "images/0bb7c4eaccfd21974412d9753fc1371265ef64d6fdcd8d932bb99237932c3b1d.jpg",
+      "downloaded_at": "2026-10-08T11:32:01.529693+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "23c3c229ebbe5e42ff36928bba98c523badf252cba473b44b43fa91c6bb42ae2",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1254315,
+      "url": "https://image.withstatic.com/85/392/417/103f5ea1b8ae443d9edac73203119cc2.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 더블 (브릿지뷰)"
+        }
+      ],
+      "file": "images/23c3c229ebbe5e42ff36928bba98c523badf252cba473b44b43fa91c6bb42ae2.jpg",
+      "downloaded_at": "2026-10-08T11:32:02.875092+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "ac693c85955353ace78846b54135aacb3802304b63276ab4e323940680548d7c",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1558860,
+      "url": "https://image.withstatic.com/84/417/185/7dd48ba8d85c409aac9d3211b2d501bf.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 온돌 (브릿지뷰)"
+        }
+      ],
+      "file": "images/ac693c85955353ace78846b54135aacb3802304b63276ab4e323940680548d7c.jpg",
+      "downloaded_at": "2026-10-08T11:32:04.344945+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "48edf0d7df9dcfe64b12421dd2267f3f94663106dd0ad66f96a7680781410d3b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 255001,
+      "url": "https://image.withstatic.com/254/399/48/54cc9eef28d44b37bd4c190f9574fcc2.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/48edf0d7df9dcfe64b12421dd2267f3f94663106dd0ad66f96a7680781410d3b.jpg",
+      "downloaded_at": "2026-10-08T11:32:05.488559+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "07ea2d9ffebe3d75263fa4b8aaa546514ab492ee1c9b5a4157c95ef4dc3f77cd",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 218627,
+      "url": "https://image.withstatic.com/228/171/429/10131b1d001f448cbc7f999687c1bf12.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/07ea2d9ffebe3d75263fa4b8aaa546514ab492ee1c9b5a4157c95ef4dc3f77cd.jpg",
+      "downloaded_at": "2026-10-08T11:32:06.661941+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "5e3295064741bf5ef7a61c0b36e1661f9ad075a89b4b449ad7ce91308d22b18b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 183349,
+      "url": "https://image.withstatic.com/312/210/386/db93a8700eac43a28974368cbef22e6c.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/5e3295064741bf5ef7a61c0b36e1661f9ad075a89b4b449ad7ce91308d22b18b.jpg",
+      "downloaded_at": "2026-10-08T11:32:07.789222+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "6596d5a7db3da3ae24826460a7cd33661c5b0fb391ce3506c19200ea40a642d5",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 224050,
+      "url": "https://image.withstatic.com/422/57/281/6fb9708f281a447e90be9930fcd90324.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/6596d5a7db3da3ae24826460a7cd33661c5b0fb391ce3506c19200ea40a642d5.jpg",
+      "downloaded_at": "2026-10-08T11:32:09.035448+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "afb13adc70f217e98143489203d4bf3e05ac68a0105b8f24bb5f580f868cebfa",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 259041,
+      "url": "https://image.withstatic.com/353/181/292/4bc8c8110ce54531b6f8fa4c93a47776.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/afb13adc70f217e98143489203d4bf3e05ac68a0105b8f24bb5f580f868cebfa.jpg",
+      "downloaded_at": "2026-10-08T11:32:10.283681+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "50f5512a8eb7ddebc955415681d1eb07bd7704016727953e35235e64468ff237",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1626481,
+      "url": "https://image.withstatic.com/420/36/234/9213165421cb45548c119c39396bc0af.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/50f5512a8eb7ddebc955415681d1eb07bd7704016727953e35235e64468ff237.jpg",
+      "downloaded_at": "2026-10-08T11:32:11.747619+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "c028a92235dea225e1f67223a2ffad1097b44c4fab264d313818406bdfead215",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 499043,
+      "url": "https://image.withstatic.com/property/2025/08/25/ed/ed08ba03f0274dba8cf328542cbab5d3.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 더블 (브릿지뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 온돌 (브릿지뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/c028a92235dea225e1f67223a2ffad1097b44c4fab264d313818406bdfead215.jpg",
+      "downloaded_at": "2026-10-08T11:32:12.919291+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "0bb7c4eaccfd21974412d9753fc1371265ef64d6fdcd8d932bb99237932c3b1d",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1314784,
+      "url": "https://image.withstatic.com/352/140/390/2ef1696d7fbc4b78896e4f7554520e41.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 더블 (브릿지뷰)"
+        }
+      ],
+      "file": "images/0bb7c4eaccfd21974412d9753fc1371265ef64d6fdcd8d932bb99237932c3b1d.jpg",
+      "downloaded_at": "2026-10-08T11:32:14.243075+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "23c3c229ebbe5e42ff36928bba98c523badf252cba473b44b43fa91c6bb42ae2",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1254315,
+      "url": "https://image.withstatic.com/300/486/203/168094f40bd74af68cf330073be39e07.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 더블 (브릿지뷰)"
+        }
+      ],
+      "file": "images/23c3c229ebbe5e42ff36928bba98c523badf252cba473b44b43fa91c6bb42ae2.jpg",
+      "downloaded_at": "2026-10-08T11:32:15.667619+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "ac693c85955353ace78846b54135aacb3802304b63276ab4e323940680548d7c",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1558860,
+      "url": "https://image.withstatic.com/285/170/487/6cb6334e0ba74a7b9020250cfedcb03f.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 온돌 (브릿지뷰)"
+        }
+      ],
+      "file": "images/ac693c85955353ace78846b54135aacb3802304b63276ab4e323940680548d7c.jpg",
+      "downloaded_at": "2026-10-08T11:32:17.028896+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "48edf0d7df9dcfe64b12421dd2267f3f94663106dd0ad66f96a7680781410d3b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 255001,
+      "url": "https://image.withstatic.com/19/406/284/d8e5254c3c4541bfa90242f8d398e80d.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/48edf0d7df9dcfe64b12421dd2267f3f94663106dd0ad66f96a7680781410d3b.jpg",
+      "downloaded_at": "2026-10-08T11:32:18.142686+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "07ea2d9ffebe3d75263fa4b8aaa546514ab492ee1c9b5a4157c95ef4dc3f77cd",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 218627,
+      "url": "https://image.withstatic.com/13/47/428/d62901ba71cb4a47842d070dcc581e7d.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/07ea2d9ffebe3d75263fa4b8aaa546514ab492ee1c9b5a4157c95ef4dc3f77cd.jpg",
+      "downloaded_at": "2026-10-08T11:32:19.273192+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "5e3295064741bf5ef7a61c0b36e1661f9ad075a89b4b449ad7ce91308d22b18b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 183349,
+      "url": "https://image.withstatic.com/452/311/238/d8a43be420c242479ec3d782ed0b5272.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/5e3295064741bf5ef7a61c0b36e1661f9ad075a89b4b449ad7ce91308d22b18b.jpg",
+      "downloaded_at": "2026-10-08T11:32:20.433168+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "6596d5a7db3da3ae24826460a7cd33661c5b0fb391ce3506c19200ea40a642d5",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 224050,
+      "url": "https://image.withstatic.com/290/206/418/c1711406a1504346b0ad16f93a161e10.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/6596d5a7db3da3ae24826460a7cd33661c5b0fb391ce3506c19200ea40a642d5.jpg",
+      "downloaded_at": "2026-10-08T11:32:21.594855+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "afb13adc70f217e98143489203d4bf3e05ac68a0105b8f24bb5f580f868cebfa",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 259041,
+      "url": "https://image.withstatic.com/472/57/166/55d86d3d344a48c5afa77023d9d2bcb2.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/afb13adc70f217e98143489203d4bf3e05ac68a0105b8f24bb5f580f868cebfa.jpg",
+      "downloaded_at": "2026-10-08T11:32:22.767971+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "50f5512a8eb7ddebc955415681d1eb07bd7704016727953e35235e64468ff237",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1626481,
+      "url": "https://image.withstatic.com/434/388/216/1d9831a284074a349c9db37e004019d0.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+        }
+      ],
+      "file": "images/50f5512a8eb7ddebc955415681d1eb07bd7704016727953e35235e64468ff237.jpg",
+      "downloaded_at": "2026-10-08T11:32:24.164978+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "853981b399e39f1bd1a056528805097874400ce07313d993ace9ea8e0182cac3",
+      "width": 1506,
+      "height": 847,
+      "format": "PNG",
+      "bytes": 2855286,
+      "url": "https://image.withstatic.com/giant/2026/09/23/f6/f61482070f084d94a1c407b82ab90f2d.png",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [비비큐 패키지]"
+        }
+      ],
+      "file": "images/853981b399e39f1bd1a056528805097874400ce07313d993ace9ea8e0182cac3.png",
+      "downloaded_at": "2026-10-08T11:32:25.836258+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "194fc9044ff3526fa19d0b6a737bd9c3ba9d0e2d7c7da0582722ebd959d358a6",
+      "width": 1515,
+      "height": 852,
+      "format": "PNG",
+      "bytes": 2821964,
+      "url": "https://image.withstatic.com/giant/2026/09/23/6d/6db0614e746940b18575d8fa6f16d5b5.png",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "프리미엄 트윈 (오션뷰) [해물삼합 패키지]"
+        }
+      ],
+      "file": "images/194fc9044ff3526fa19d0b6a737bd9c3ba9d0e2d7c7da0582722ebd959d358a6.png",
+      "downloaded_at": "2026-10-08T11:32:27.479263+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "d4e651782a71092b35b116e3785001953bad9bfed5b6d8d01e38ac83b315363a",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 328806,
+      "url": "https://image.withstatic.com/29/201/126/4dd91cb1bc5b48b9ac1115337986a855.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/d4e651782a71092b35b116e3785001953bad9bfed5b6d8d01e38ac83b315363a.jpg",
+      "downloaded_at": "2026-10-08T11:32:28.610635+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "66cc0a5949b88f8030c0f94cc0028a54f8bb99f8fc17f0d004a78e4d30353000",
+      "width": 1908,
+      "height": 1073,
+      "format": "JPEG",
+      "bytes": 669694,
+      "url": "https://image.withstatic.com/362/158/246/29b0abaf533546d6bac99d87726649cc.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/66cc0a5949b88f8030c0f94cc0028a54f8bb99f8fc17f0d004a78e4d30353000.jpg",
+      "downloaded_at": "2026-10-08T11:32:29.788047+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "b2412c0a7d555f40d52113608101a52b4439e16cb5731db61987464e4d91403c",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 384444,
+      "url": "https://image.withstatic.com/447/401/48/26399c2c43174bfaa4a667e0c354fea5.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/b2412c0a7d555f40d52113608101a52b4439e16cb5731db61987464e4d91403c.jpg",
+      "downloaded_at": "2026-10-08T11:32:30.970525+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "f55102f51e4e9775c307e45b2562a5693be3cf5ed03fd6b7f56bf9a8117a8be2",
+      "width": 1908,
+      "height": 1073,
+      "format": "JPEG",
+      "bytes": 892316,
+      "url": "https://image.withstatic.com/232/461/493/66afd18df831490e9dd7bbb79f5a7ac6.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/f55102f51e4e9775c307e45b2562a5693be3cf5ed03fd6b7f56bf9a8117a8be2.jpg",
+      "downloaded_at": "2026-10-08T11:32:32.179634+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "8823ba5626c293f1b269c26af73f3e4705c249278f953d12501b7ea4dc044cfc",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 811536,
+      "url": "https://image.withstatic.com/195/183/212/de33e05752564313a77c68ade99d69ae.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/8823ba5626c293f1b269c26af73f3e4705c249278f953d12501b7ea4dc044cfc.jpg",
+      "downloaded_at": "2026-10-08T11:32:33.417289+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "200e9ba1238ef24043d2401dc68009e8ab1708cd8cd7e6fffe853c0a9503211b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 820355,
+      "url": "https://image.withstatic.com/57/305/74/140d9b89abac40be8fe84dca8b1b5a25.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/200e9ba1238ef24043d2401dc68009e8ab1708cd8cd7e6fffe853c0a9503211b.jpg",
+      "downloaded_at": "2026-10-08T11:32:34.544505+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "fdaea3e7507a438f7fd260f7e8b97a814c31f5ab161e11146fa0abfb9caed105",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 892740,
+      "url": "https://image.withstatic.com/294/312/165/4502c2560f75401da1bbbce8cb71d9e4.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/fdaea3e7507a438f7fd260f7e8b97a814c31f5ab161e11146fa0abfb9caed105.jpg",
+      "downloaded_at": "2026-10-08T11:32:35.687131+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "be1f2e06a5c052aa4024c021dc57a8d109ab9d36906879c47af354708e4b6dba",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 773666,
+      "url": "https://image.withstatic.com/309/164/271/b90433da46234c649b626c4c41733486.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/be1f2e06a5c052aa4024c021dc57a8d109ab9d36906879c47af354708e4b6dba.jpg",
+      "downloaded_at": "2026-10-08T11:32:36.834152+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "3814531518769496bd90b9339ecf53a1de873c52b96e67942ebd58b828c85860",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 933554,
+      "url": "https://image.withstatic.com/432/52/334/078872fd3ad04208b69bdd1a51bb151d.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/3814531518769496bd90b9339ecf53a1de873c52b96e67942ebd58b828c85860.jpg",
+      "downloaded_at": "2026-10-08T11:32:38.017361+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "280d9c810fab290e1d40a260cce3a612ea6601619bd7935d43495d905a3e49e1",
+      "width": 1920,
+      "height": 1406,
+      "format": "JPEG",
+      "bytes": 1045576,
+      "url": "https://image.withstatic.com/424/230/285/571d8f08d65d4462817a831e21aa63d7.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/280d9c810fab290e1d40a260cce3a612ea6601619bd7935d43495d905a3e49e1.jpg",
+      "downloaded_at": "2026-10-08T11:32:39.317878+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "238a889cfe35bfceb22a07abc6cbb439ff4360105d25828787bf355b48e0f639",
+      "width": 1920,
+      "height": 1304,
+      "format": "JPEG",
+      "bytes": 490675,
+      "url": "https://image.withstatic.com/315/399/211/b9c01ecc68354833844794b1534c5006.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/238a889cfe35bfceb22a07abc6cbb439ff4360105d25828787bf355b48e0f639.jpg",
+      "downloaded_at": "2026-10-08T11:32:40.474587+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "c2010a76fa0f699145cc4c524e814cdd010ea66d668366c0736021157703b2d8",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 878653,
+      "url": "https://image.withstatic.com/470/447/48/74c7092687204d37b9e5ddc8cf884760.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "럭셔리 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/c2010a76fa0f699145cc4c524e814cdd010ea66d668366c0736021157703b2d8.jpg",
+      "downloaded_at": "2026-10-08T11:32:41.721287+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "fa1984b0c2497810eebe86de97c9edc832c8ad1f3cf027ace044b3fc5ffb1aad",
+      "width": 2048,
+      "height": 1152,
+      "format": "PNG",
+      "bytes": 2347135,
+      "url": "https://image.withstatic.com/giant/2026/05/06/47/47519f11b999457b9c6b7f4414dafbf7.png",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/fa1984b0c2497810eebe86de97c9edc832c8ad1f3cf027ace044b3fc5ffb1aad.png",
+      "downloaded_at": "2026-10-08T11:32:43.196751+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "dfd3e98a44335a7569e09561545c5b64afc6c36bb29ee00e87cb1ffcdae1f867",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 750736,
+      "url": "https://image.withstatic.com/331/232/171/cd038fec830d4f34b6c3ca48275ca4bf.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/dfd3e98a44335a7569e09561545c5b64afc6c36bb29ee00e87cb1ffcdae1f867.jpg",
+      "downloaded_at": "2026-10-08T11:32:44.404433+00:00",
+      "reused": true
+    },
+    {
+      "sha256": "1c50d43bc7d68b4bac673eaa12233d8d4479fe5ff029ac1f3035fa5bcbe3c3bb",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 957742,
+      "url": "https://image.withstatic.com/14/474/255/03b608ff04704f9281152f1a4673f8d7.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/1c50d43bc7d68b4bac673eaa12233d8d4479fe5ff029ac1f3035fa5bcbe3c3bb.jpg",
+      "downloaded_at": "2026-10-08T11:35:20.451694+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "c1307a1cda282d91a21d6b0d9bd4c77f8f74d5868fa27138beb98fd2a202cc17",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1349816,
+      "url": "https://image.withstatic.com/304/43/20/d4e285e80b13496cb17fa9bb0238cf30.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/c1307a1cda282d91a21d6b0d9bd4c77f8f74d5868fa27138beb98fd2a202cc17.jpg",
+      "downloaded_at": "2026-10-08T11:35:21.801591+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "02e14204ecf5c0a76580d358a5d89b030b4ec4c20db9865e7604367da1560e32",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1212556,
+      "url": "https://image.withstatic.com/361/353/396/221bf18a0e4a4fdebb2738398a847985.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/02e14204ecf5c0a76580d358a5d89b030b4ec4c20db9865e7604367da1560e32.jpg",
+      "downloaded_at": "2026-10-08T11:35:23.107502+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "525844e8d8dea3627fdb77a3b312164ce4c8b4b59557592422a84911e77fe62b",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1010789,
+      "url": "https://image.withstatic.com/273/321/8/4b602ae5f33c45619b91b4d65a94434d.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/525844e8d8dea3627fdb77a3b312164ce4c8b4b59557592422a84911e77fe62b.jpg",
+      "downloaded_at": "2026-10-08T11:35:24.393643+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "f2c8384b1f061c9df434fa3732417bfc6047c4b9cf339b980cdbe6a079a07e41",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 356635,
+      "url": "https://image.withstatic.com/122/32/288/f312cd82fdbc4138acb9682469180aa0.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/f2c8384b1f061c9df434fa3732417bfc6047c4b9cf339b980cdbe6a079a07e41.jpg",
+      "downloaded_at": "2026-10-08T11:35:25.544024+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "27294b10f45304ce4aaa0999f229dc7cfb33d96f55d51561cdb2fcf645e00ba1",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1085097,
+      "url": "https://image.withstatic.com/228/164/256/0405db58683746249fe5d1290bcdba9a.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/27294b10f45304ce4aaa0999f229dc7cfb33d96f55d51561cdb2fcf645e00ba1.jpg",
+      "downloaded_at": "2026-10-08T11:35:26.746852+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "7bebdc082262dc9953cb51a2471cceaf9c45cce8c023f03121dab07a81625ca5",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 983355,
+      "url": "https://image.withstatic.com/486/473/74/2e26ad12352d4f5a8c88c944d0cf0b08.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/7bebdc082262dc9953cb51a2471cceaf9c45cce8c023f03121dab07a81625ca5.jpg",
+      "downloaded_at": "2026-10-08T11:35:27.967812+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "8bd7839b562d69b05903607dda1dda6281e31c9b22d2d0725ab59f931938601a",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 903386,
+      "url": "https://image.withstatic.com/17/153/200/fd0bc4aefe3f40da8461ac1efde83fdc.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/8bd7839b562d69b05903607dda1dda6281e31c9b22d2d0725ab59f931938601a.jpg",
+      "downloaded_at": "2026-10-08T11:35:29.209834+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "8a976056049e9f1960d62679a7507d1466451f8014ce97318b293df8fd568bc5",
+      "width": 1920,
+      "height": 1080,
+      "format": "JPEG",
+      "bytes": 1092932,
+      "url": "https://image.withstatic.com/218/272/240/edc2321b7c574c948fc52be5b13dd80a.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/8a976056049e9f1960d62679a7507d1466451f8014ce97318b293df8fd568bc5.jpg",
+      "downloaded_at": "2026-10-08T11:35:30.388076+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "80ab5417d8ae9a5fec0149e565674acfa0da76234649180cf35b8b10ab37eb46",
+      "width": 1920,
+      "height": 1406,
+      "format": "JPEG",
+      "bytes": 1045586,
+      "url": "https://image.withstatic.com/197/44/412/c0c120be6add43189e36df95d84428a8.jpg",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "팔라 스위트 (오션뷰)"
+        },
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/80ab5417d8ae9a5fec0149e565674acfa0da76234649180cf35b8b10ab37eb46.jpg",
+      "downloaded_at": "2026-10-08T11:35:31.639567+00:00",
+      "reused": false
+    },
+    {
+      "sha256": "fa1984b0c2497810eebe86de97c9edc832c8ad1f3cf027ace044b3fc5ffb1aad",
+      "width": 2048,
+      "height": 1152,
+      "format": "PNG",
+      "bytes": 2347135,
+      "url": "https://image.withstatic.com/giant/2026/05/06/79/793fd24bd1164864884d73410c13af20.png",
+      "labels": [
+        {
+          "category": "room",
+          "title": null,
+          "room_name": "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+        }
+      ],
+      "file": "images/fa1984b0c2497810eebe86de97c9edc832c8ad1f3cf027ace044b3fc5ffb1aad.png",
+      "downloaded_at": "2026-10-08T11:35:33.248770+00:00",
+      "reused": false
+    }
+  ],
+  "failures": [],
+  "completed_at": "2026-10-08T11:35:33.259291+00:00",
+  "unique_files": 56
+}
