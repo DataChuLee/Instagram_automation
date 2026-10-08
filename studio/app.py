@@ -1,0 +1,439 @@
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import io
+import json
+import secrets
+import tempfile
+import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from PIL import Image, ImageOps, UnidentifiedImageError
+
+from . import codex, collector, store
+from .drama import Drama
+from .fish import Fish
+from .media import preview_image
+from .models import ApproveRequest, CaptionStyle, CreateOptions, Job, Storyboard
+from .paths import DATA, RESOURCES, initialize, job_path
+from .pipeline import Pipeline
+
+TOKEN = secrets.token_urlsafe(32)
+fish = Fish()
+drama = Drama()
+pipeline = Pipeline(fish, drama)
+pending_login = DATA / 'auth/codex-login-message.txt'
+connection = {'fish': False, 'workspaces': [], 'message': '',
+              'codex_login': pending_login.read_text(encoding='utf-8') if pending_login.exists() else ''}
+background = set()
+
+
+def error_description(error):
+    if isinstance(error, BaseExceptionGroup):
+        return '; '.join(error_description(item) for item in error.exceptions)
+    import re
+    message = re.sub(r'https?://[^\s)]+', lambda m: m.group().split('?')[0], str(error))
+    return (type(error).__name__ + ': ' + (message if len(message)<2200 else message[:300]+' … '+message[-1800:]))
+
+
+@asynccontextmanager
+async def lifespan(app):
+    initialize()
+    store.recover()
+    collector.recover()
+    yield
+    tasks = list(background) + list(pipeline.tasks.values())
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    await drama.close()
+
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver'])
+app.mount('/static', StaticFiles(directory=RESOURCES / 'studio/web'), name='static')
+
+
+@app.middleware('http')
+async def local_security(request: Request, call_next):
+    if request.method not in {'GET', 'HEAD'}:
+        if not secrets.compare_digest(request.headers.get('X-Studio-Token', ''), TOKEN):
+            return Response('Invalid local session', status_code=403)
+    response = await call_next(request)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.exception_handler(ValueError)
+async def invalid(request, error):
+    from fastapi.responses import JSONResponse
+    return JSONResponse({'detail': str(error)}, status_code=400)
+
+
+@app.exception_handler(FileNotFoundError)
+async def missing(request, error):
+    from fastapi.responses import JSONResponse
+    return JSONResponse({'detail': '저장된 작업이나 파일을 찾지 못했습니다.'}, status_code=404)
+
+
+@app.get('/', response_class=HTMLResponse)
+async def index():
+    return (RESOURCES / 'studio/web/index.html').read_text(encoding='utf-8').replace('__TOKEN__', TOKEN)
+
+
+@app.get('/font')
+async def font():
+    return FileResponse(RESOURCES / 'assets/fonts/Paperlogy-7Bold.ttf', media_type='font/ttf')
+
+
+def spawn(coroutine):
+    task = asyncio.create_task(coroutine)
+    background.add(task)
+    task.add_done_callback(background.discard)
+
+
+@app.get('/api/connections')
+async def connections():
+    try:
+        connected = await codex.login_status()
+    except (OSError, RuntimeError):
+        connected = False
+    return {**connection, 'codex': connected,
+            'fish_login_url': fish.authorization_url if connection.get('fish_busy') else None,
+            'drama_open': drama.login_open or bool(drama.page and not drama.page.is_closed())}
+
+
+@app.post('/api/connect/codex')
+async def connect_codex():
+    if connection.get('codex_busy'):
+        return {'ok': True}
+    connection['codex_busy'] = True
+    connection['codex_login'] = '로그인 진행 중'
+    async def work():
+        try:
+            process = await codex.login()
+            lines = []
+            async for line in process.stdout:
+                lines.append(line.decode('utf-8', 'replace'))
+                connection['codex_login'] = ''.join(lines)[-3000:]
+                pending_login.write_text(connection['codex_login'], encoding='utf-8')
+            await process.wait()
+        except Exception as error:
+            connection['codex_login'] = str(error)
+        finally:
+            connection['codex_busy'] = False
+    spawn(work())
+    return {'ok': True}
+
+
+@app.post('/api/connect/fish')
+async def connect_fish():
+    if connection.get('fish_busy'):
+        return {'ok': True}
+    connection['fish_busy'] = True
+    async def work():
+        try:
+            connection['message'] = '브라우저에서 Fish 계정 연결을 완료해 주세요.'
+            value = await fish.connect()
+            connection.update(fish=True, workspaces=value.get('workspaces', []), message='Fish MCP 연결 완료')
+        except Exception as error:
+            connection['message'] = 'Fish 연결에 실패했습니다. ' + error_description(error)
+        finally:
+            connection['fish_busy'] = False
+    spawn(work())
+    return {'ok': True}
+
+
+@app.get('/oauth/callback', response_class=HTMLResponse)
+async def oauth_callback(code: str, state: str | None = None, iss: str | None = None):
+    fish.receive_callback(code, state, iss)
+    return '<meta charset="utf-8"><p>계정 연결을 처리하고 있습니다. Stay Studio 창으로 돌아가 주세요.</p>'
+
+
+@app.post('/api/connect/drama')
+async def connect_drama():
+    if connection.get('drama_busy'):
+        return {'ok': True}
+    connection['drama_busy'] = True
+    async def work():
+        try:
+            await drama.open_login()
+            connection['message'] = '열린 Chrome/Edge에서 Google 로그인을 직접 완료한 뒤 해당 로그인 창을 닫아 주세요. 그 다음 프로그램에서 진행하세요.'
+        except Exception as error:
+            connection['message'] = 'Fish 브라우저를 열지 못했습니다. ' + error_description(error)
+        finally:
+            connection['drama_busy'] = False
+    spawn(work())
+    return {'ok': True}
+
+
+@app.get('/api/jobs')
+async def jobs():
+    return [{'id': job.id, 'state': job.state, 'photos': len(job.photos), 'message': job.message,
+             'name': ' / '.join(source['name'] for source in job.sources)}
+            for job in store.list_jobs()]
+
+
+@app.post('/api/jobs')
+async def upload(files: list[UploadFile] = File(...)):
+    return add_photos(Job(id=uuid.uuid4().hex), await read_uploads(files)).model_dump()
+
+
+async def read_uploads(files):
+    if not 1 <= len(files) <= 60:
+        raise ValueError('사진은 1~60장까지 넣어 주세요.')
+    inputs = []
+    total = 0
+    for file in files:
+        data = await file.read(20 * 1024 * 1024 + 1)
+        total += len(data)
+        if len(data) > 20 * 1024 * 1024 or total > 300 * 1024 * 1024:
+            raise ValueError('사진 용량이 너무 큽니다. 사진당 20MB, 전체 300MB 이내로 넣어 주세요.')
+        inputs.append((data, {'name': Path(file.filename or '사진').name}))
+    return inputs
+
+
+def photos_editable(job):
+    if pipeline.busy(job.id) or job.storyboard or job.generated or job.narration or job.result:
+        raise ValueError('사진은 대본 분석 전에 추가할 수 있습니다. 새 작업을 만들어 주세요.')
+
+
+def add_photos(job, inputs, source_metadata=None):
+    photos_editable(job)
+    folder = job_path(job.id)
+    folder.mkdir(parents=True, exist_ok=True)
+    seen = {photo['sha256'] for photo in job.photos}
+    total = sum(photo.get('bytes', (folder / photo['file']).stat().st_size) for photo in job.photos)
+    added = []
+    # Validate the full batch in a temporary folder before changing the existing job.
+    with tempfile.TemporaryDirectory(prefix='.photos-', dir=folder) as directory:
+        staging = Path(directory)
+        for data, metadata in inputs:
+            digest = hashlib.sha256(data).hexdigest()
+            if digest in seen:
+                continue
+            total += len(data)
+            if len(data) > 20 * 1024 * 1024 or total > 300 * 1024 * 1024:
+                raise ValueError('사진 용량이 너무 큽니다. 사진당 20MB, 전체 300MB 이내로 넣어 주세요.')
+            if len(job.photos) + len(added) >= 60:
+                raise ValueError('첨부 사진과 링크 사진을 합쳐 최대 60장까지 넣을 수 있습니다.')
+            name = f'photo-{len(job.photos) + len(added):03}.jpg'
+            try:
+                with Image.open(io.BytesIO(data)) as original:
+                    if not source_metadata and original.format not in {'JPEG', 'PNG', 'WEBP'}:
+                        raise ValueError('JPG, PNG, WebP 사진을 넣어 주세요.')
+                    image = ImageOps.exif_transpose(original).convert('RGB')
+                    if min(image.size) < 300:
+                        raise ValueError('사진의 짧은 변이 300px 이상이어야 합니다.')
+                    image.save(staging / name, quality=97)
+            except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
+                raise ValueError('읽을 수 없는 사진 파일이 있습니다.') from error
+            added.append(dict(metadata, file=name, sha256=digest, width=image.width, height=image.height, bytes=len(data)))
+            seen.add(digest)
+        if not job.photos and not added:
+            raise ValueError('추가할 사진을 선택해 주세요.')
+        for photo in added:
+            (staging / photo['file']).replace(folder / photo['file'])
+    job.photos.extend(added)
+    if source_metadata and not any(s['url'] == source_metadata['url'] for s in job.sources):
+        job.sources.append(source_metadata)
+    job.state, job.error = 'uploaded', None
+    job.message = f'사진 {len(job.photos)}장을 준비했습니다. 새 사진 {len(added)}장 추가.'
+    store.save(job)
+    return job
+
+
+@app.post('/api/jobs/{job_id}/photos')
+async def append_photos(job_id: str, files: list[UploadFile] = File(...)):
+    inputs = await read_uploads(files)
+    return add_photos(store.read(job_id), inputs).model_dump()
+
+
+@app.post('/api/collections', status_code=202)
+async def start_collection(value: dict):
+    url = value.get('url')
+    if not isinstance(url, str):
+        raise ValueError('여기어때 국내 숙소 링크를 입력해 주세요.')
+    collection_id, launch = collector.start(url)
+    if launch:
+        spawn(collector.collect(collection_id))
+    return collector.gallery(collection_id)
+
+
+@app.get('/api/collections/{collection_id}')
+async def collection_status(collection_id: str):
+    return collector.gallery(collection_id)
+
+
+@app.get('/api/collections/{collection_id}/photos/{photo_id}')
+async def collection_photo(collection_id: str, photo_id: str):
+    return Response(await asyncio.to_thread(collector.thumbnail, collection_id, photo_id), media_type='image/jpeg')
+
+
+@app.post('/api/jobs/import')
+async def import_collection(value: dict):
+    collection_id = value.get('collection_id', '')
+    manifest = collector.read(collection_id)
+    if manifest['status'] == 'in_progress':
+        raise ValueError('수집이 끝난 뒤 사진을 선택해 주세요.')
+    selected = value.get('photos')
+    if not isinstance(selected, list) or not 1 <= len(selected) <= 60 or any(not isinstance(p, str) for p in selected):
+        raise ValueError('가져올 사진을 1~60장 선택해 주세요.')
+    job = store.read(value['job_id']) if value.get('job_id') else Job(id=uuid.uuid4().hex)
+    photos_editable(job)
+    inputs = []
+    total = 0
+    for photo_id in dict.fromkeys(selected):
+        try:
+            entry = collector.photo_entry(collection_id, photo_id)
+        except FileNotFoundError as error:
+            raise ValueError(str(error)) from error
+        if entry['bytes'] > 20 * 1024 * 1024:
+            raise ValueError('사진당 20MB 이하로 선택해 주세요.')
+        total += entry['bytes']
+        if total > 300 * 1024 * 1024:
+            raise ValueError('선택 사진의 전체 용량은 300MB 이하여야 합니다.')
+        labels = entry.get('labels', [])
+        title = next((label.get('title') or label.get('room_name') for label in labels if label.get('title') or label.get('room_name')), '사진')
+        inputs.append(((collector.folder(collection_id) / entry['file']).read_bytes(),
+                       {'name': f"{manifest['name']} · {title}", 'labels': labels, 'source_url': entry['url']}))
+    source = {'name': manifest['name'], 'url': manifest['source_url'], 'collection_id': collection_id}
+    return add_photos(job, inputs, source).model_dump()
+
+
+@app.get('/api/jobs/{job_id}')
+async def status(job_id: str):
+    job = store.read(job_id)
+    return job.model_dump() | {'available_exports': [name for name in
+        ('stay-reel.mp4', 'stay-video.mp4', 'stay-script.txt', 'stay-reel.srt', 'stay-voice.mp3')
+        if (job_path(job_id) / name).is_file()]}
+
+
+@app.post('/api/jobs/{job_id}/analyze')
+async def analyze(job_id: str, options: CreateOptions):
+    if pipeline.busy(job_id):
+        raise ValueError('작업 진행 중에는 설정을 변경할 수 없습니다.')
+    job = store.read(job_id)
+    job.options = options
+    store.save(job)
+    pipeline.launch(job_id, pipeline.analyze)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/style')
+async def style(job_id: str, options: CreateOptions):
+    if pipeline.busy(job_id):
+        raise ValueError('작업이 끝난 뒤 자막 설정을 변경해 주세요.')
+    job = store.read(job_id)
+    job.options.caption = options.caption
+    job.options.speed = options.speed
+    store.save(job)
+    return job.model_dump()
+
+
+@app.post('/api/jobs/{job_id}/storyboard')
+async def edit_storyboard(job_id: str, value: dict):
+    job = store.read(job_id)
+    if pipeline.busy(job_id) or job.narration or any(v.get('generation_id') or v.get('idempotency_key') for v in job.generated.values()):
+        raise ValueError('생성 전에만 대본·움직임을 바꿀 수 있습니다. 새 작업을 만들어 주세요.')
+    job.storyboard = Storyboard.validate_plan(value, len(job.photos), len(job.photos))
+    job.quote = job.approval = None
+    job.generated = {}
+    job.state, job.error = 'uploaded', None
+    job.message = '대본·움직임 설정을 저장했습니다. 크레딧 견적을 다시 확인해 주세요.'
+    store.save(job)
+    return job.model_dump()
+
+
+@app.post('/api/jobs/{job_id}/quote')
+async def quote(job_id: str, value: dict):
+    workspace = value.get('workspace')
+    if not workspace or not any(item['workspace_id'] == workspace for item in connection['workspaces']):
+        raise ValueError('연결된 Fish 작업 공간을 선택해 주세요.')
+    pipeline.launch(job_id, pipeline.quote, workspace)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/approve')
+async def approve(job_id: str, value: ApproveRequest):
+    if pipeline.busy(job_id):
+        raise ValueError('작업이 실행 중입니다.')
+    job = store.read(job_id)
+    store.approve(job, value.quote_id, value.expected_credits)
+    pipeline.launch(job_id, pipeline.generate)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/resume')
+async def resume(job_id: str):
+    job = store.read(job_id)
+    store.generation_allowed(job)
+    pipeline.launch(job_id, pipeline.generate)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/render')
+async def rerender(job_id: str):
+    pipeline.launch(job_id, pipeline.render)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/recover-voice/{scene}')
+async def recover_voice(job_id: str, scene: int, file: UploadFile = File(...)):
+    job = store.read(job_id)
+    if pipeline.busy(job_id) or not job.storyboard or not 0 <= scene < len(job.storyboard.scenes):
+        raise ValueError('복구할 수 없는 장면입니다.')
+    data = await file.read(20 * 1024 * 1024 + 1)
+    if len(data) > 20 * 1024 * 1024:
+        raise ValueError('음성 파일은 20MB 이하로 넣어 주세요.')
+    name = f'voice-{scene:03}.mp3'
+    path = job_path(job_id) / name
+    pending = path.with_name(f'voice-{scene:03}.pending.mp3')
+    pending.write_bytes(data)
+    from .render import run
+    try:
+        await asyncio.to_thread(run, '-i', pending, '-f', 'null', '-')
+    except Exception:
+        pending.unlink(missing_ok=True)
+        raise ValueError('읽을 수 없는 음성 파일입니다.')
+    pending.replace(path)
+    job.narration[str(scene)] = {'file': name, 'state': 'completed', 'recovered_by_user': True}
+    store.save(job)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/preview')
+async def preview(job_id: str, value: dict):
+    job = store.read(job_id)
+    index = int(value.get('photo', 0))
+    if not 0 <= index < len(job.photos):
+        raise ValueError('사진 번호가 올바르지 않습니다.')
+    caption = CaptionStyle.model_validate(value.get('caption', {}))
+    text = value.get('text', '이런 숙소, 어때요?')[:160]
+    focus = next(((item.x, item.y) for item in job.storyboard.crop_focus if item.photo == index),
+                 (0.5, 0.5)) if job.storyboard else (0.5, 0.5)
+    image = await asyncio.to_thread(preview_image, job_path(job_id) / job.photos[index]['file'], text, caption, focus)
+    data = io.BytesIO()
+    image.save(data, format='JPEG', quality=95)
+    return Response(data.getvalue(), media_type='image/jpeg')
+
+
+@app.get('/api/jobs/{job_id}/files/{name}')
+async def files(job_id: str, name: str):
+    job = store.read(job_id)
+    allowed = {p['file'] for p in job.photos} | {'stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3',
+                                               'stay-script.txt', 'stay-reel.srt', 'preview.jpg', 'verification.json'}
+    if name not in allowed:
+        raise HTTPException(404)
+    path = job_path(job_id) / name
+    if not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, filename=name if name.endswith(('.mp4', '.mp3', '.txt', '.srt', '.json')) else None)
