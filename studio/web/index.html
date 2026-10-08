@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="studio-token" content="__TOKEN__"><title>Stay Studio · 사진이 이야기가 되는 곳</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<header><a class="brand" href="/">stay<span>studio</span><i>●</i></a><div class="local">LOCAL EDITION <span>내 PC에서 만드는 영상</span></div><button id="settingsButton" class="quiet">계정 연결 ↗</button></header>
+<main>
+<section class="intro"><div><p class="eyebrow">YOUR STAY, IN MOTION</p><h1>사진이 이야기가 되는 곳.</h1><p>숙소 사진을 넣고, 나만의 자막을 더하세요.</p></div><div class="spec"><strong>1080<span>×1920</span></strong><p>9:16 세로 영상 · 30fps</p></div></section>
+<div class="workspace">
+<section class="source-panel"><div class="panel-heading"><h2><span>01</span> 사진 & 이야기</h2><button id="newJob" class="quiet">새 작업 +</button></div>
+<label class="drop-zone" id="dropZone"><input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple><span class="upload-icon">＋</span><strong>숙소 사진을 여기에 넣어 주세요</strong><span>드래그하거나 클릭해서 선택 · JPG, PNG, WebP</span></label>
+<section class="link-source" aria-labelledby="linkHeading">
+<h3 id="linkHeading">숙소 링크로 사진 가져오기</h3>
+<label class="field" for="stayUrl">여기어때 국내 숙소 상세 링크<input id="stayUrl" type="url" placeholder="https://www.yeogi.com/domestic-accommodations/…" autocomplete="off"></label>
+<button id="collectPhotos" class="outline">이미지 수집 ↗</button>
+<p id="collectionStatus" class="muted" role="status">수집용 브라우저가 열립니다. 수집이 끝나면 사진을 골라 추가하세요.</p>
+<div id="collectionGallery" hidden><strong id="collectionName"></strong><div class="collection-actions"><button id="selectCollection" class="quiet">사진 선택</button><button id="clearCollection" class="quiet">선택 해제</button><span id="collectionCount"></span></div><div id="collectionGrid" class="collection-grid"></div><button id="importPhotos" class="mint" disabled>선택한 사진 추가</button><details id="collectionFailures" hidden><summary>수집하지 못한 사진</summary><ul id="collectionFailureList"></ul></details></div>
+</section>
+<p id="sourceNames" class="source-names" hidden></p><p id="photoLockNote" class="muted" hidden>대본 분석 후에는 사진을 추가할 수 없어요. 새 작업을 만들어 주세요.</p>
+<div class="photo-heading"><span id="photoCount">사진 0장</span><span>모든 사진이 영상에 담깁니다</span></div><div id="photoGrid" class="photo-grid"></div>
+<div class="analysis-controls"><input id="motion" type="hidden" value="3"><button id="analyze" class="dark" disabled>사진 분석 & 대본 만들기 ↗</button></div>
+<div id="storyboard" class="storyboard"><p class="muted">사진을 분석하면 장면별 대본이 여기에 나타납니다.</p></div>
+<section id="motionEditor" class="motion-editor" aria-labelledby="motionHeading"><h3 id="motionHeading">움직임 장면 선택 <span id="motionCount">0장 선택</span></h3><p id="motionHelp" class="muted">사진 분석 후 움직일 사진을 직접 고르고 프롬프트를 입력할 수 있어요.</p><div id="motionGrid" class="motion-grid"></div><div id="motionPrompts"></div><button id="savePlan" class="outline" hidden>대본·움직임 변경 저장</button><p id="planNotice" class="muted" role="status"></p></section>
+<div class="history-section"><h3>이전 작업</h3><div id="history"></div></div>
+</section>
+<section class="preview-panel"><div class="panel-heading"><h2><span>02</span> 미리보기</h2><span class="badge">9:16</span></div><div class="preview-wrap"><img id="preview" alt="자막을 적용한 세로 영상 미리보기" hidden><video id="video" controls hidden></video><div id="previewEmpty"><span>STAY<br>IN FRAME.</span><p>사진을 넣으면<br>이곳에서 자막을 조절할 수 있어요.</p></div></div><p class="preview-note">미리보기와 최종 영상에 같은 자막 디자인을 적용합니다.</p></section>
+<section class="style-panel"><div class="panel-heading"><h2><span>03</span> 자막 & 완성</h2><span class="small-dot"></span></div><div class="font-card"><span>페이퍼로지 Bold</span><strong>이런 숙소, 어때요?</strong><small>첨부한 VLLO 디자인을 기본값으로</small></div>
+<label class="field">미리보기 문구<input id="captionText" maxlength="160" value="이런 숙소, 어때요?"></label>
+<div class="range-field"><div class="range-heading"><label for="fontSize">글자 크기</label><input id="fontSizeInput" aria-label="글자 크기 직접 입력" aria-describedby="fontSizeError" type="number" min="28" max="120" step="1" value="64" required></div><input id="fontSize" type="range" min="28" max="120" value="64"><small id="fontSizeError" class="input-error" hidden>28~120 사이 정수를 입력하세요.</small></div>
+<div class="range-field"><div class="range-heading"><label for="posY">Y 위치</label><input id="posYInput" aria-label="Y 위치 직접 입력" aria-describedby="posYError" type="number" min="-35" max="35" step="0.5" value="13" required></div><input id="posY" type="range" min="-35" max="35" value="13" step="0.5"><small id="posYError" class="input-error" hidden>-35~35 사이를 0.5 단위로 입력하세요.</small></div>
+<div class="range-field"><div class="range-heading"><label for="posX">X 위치</label><input id="posXInput" aria-label="X 위치 직접 입력" aria-describedby="posXError" type="number" min="-35" max="35" step="0.5" value="0" required></div><input id="posX" type="range" min="-35" max="35" value="0" step="0.5"><small id="posXError" class="input-error" hidden>-35~35 사이를 0.5 단위로 입력하세요.</small></div>
+<div class="style-row"><label>글자 색 <input id="color" type="color" value="#cccacc"></label><label>검정 외곽선 <input id="outline" type="number" min="0" max="16" value="8"></label></div>
+<div class="range-field"><label for="bgOpacity">배경 불투명도 <output id="bgOpacityValue">20%</output></label><input id="bgOpacity" type="range" min="0" max="100" value="20"></div>
+<div class="style-row"><label>검정 그림자 <input id="shadow" type="number" min="0" max="12" value="3"></label><label>음성 속도 <select id="speed"><option value="0.85">0.85배</option><option value="0.95">0.95배</option><option value="1" selected>1배</option><option value="1.1">1.1배</option><option value="1.2">1.2배</option></select></label></div>
+<p class="voice-note">일반여성2 · Fish Audio Drama3</p>
+<button id="saveStyle" class="outline" disabled>자막 설정 저장</button>
+<div class="export-section"><label class="field">Fish 작업 공간<select id="workspace"><option value="">계정을 먼저 연결해 주세요</option></select></label><button id="quote" class="dark" disabled>크레딧 견적 확인 →</button><div id="quoteBox" hidden><p>이번 생성에 필요한 크레딧</p><strong id="credits">0</strong><p id="quoteBreakdown"></p><button id="approve" class="mint">이 금액 사용 승인 & 영상 만들기</button></div><button id="rerender" class="outline" hidden>저장된 결과로 다시 합성 · 추가 비용 없음</button><button id="resume" class="outline" hidden>중단된 작업 이어서 진행</button>
+<div id="exportDownloads" class="export-downloads" aria-labelledby="exportHeading">
+<h3 id="exportHeading">결과 다운로드</h3><p id="exportNotice" class="muted">영상 생성이 끝나면 아래 파일을 각각 다운로드할 수 있어요.</p>
+<div class="export-card"><div><strong>완성본</strong><small>자막 + 내레이션 · MP4</small></div><a id="download" class="quiet" hidden>저장 ↓</a><span id="downloadMissing" class="muted" hidden>다시 합성해 주세요</span></div>
+<div class="export-card"><div><strong>영상</strong><small>자막·음성 없이 · MP4</small></div><a id="videoDownload" class="quiet" hidden>저장 ↓</a><span id="videoDownloadMissing" class="muted" hidden>다시 합성해 주세요</span></div>
+<div class="export-card"><div><strong>자막대본</strong><small>대본 TXT · 시간 자막 SRT</small></div><div class="script-downloads"><a id="scriptDownload" class="quiet" hidden>TXT ↓</a><a id="subtitleDownload" class="quiet" hidden>SRT ↓</a><span id="scriptDownloadMissing" class="muted" hidden>TXT는 다시 합성해 주세요</span></div></div>
+<div class="export-card"><div><strong>음성파일</strong><small>영상에 맞춘 내레이션 · MP3</small></div><a id="audioDownload" class="quiet" hidden>저장 ↓</a><span id="audioDownloadMissing" class="muted" hidden>다시 합성해 주세요</span></div>
+</div></div>
+</section></div>
+<aside id="status" role="status"><span class="status-indicator"></span><div><strong id="statusTitle">사진을 기다리고 있어요.</strong><p id="statusDetail">사진 → 대본 → 크레딧 승인 → 영상 완성</p></div></aside>
+</main><footer><span>MADE FOR YOUR NEXT STAY.</span><span>내 PC · ChatGPT 구독 · Fish 패키지 크레딧</span></footer>
+<dialog id="settings"><div class="dialog-heading"><h2>처음 한 번, 계정을 연결하세요.</h2><button id="closeSettings" class="quiet">닫기 ×</button></div><p>친구 PC에서는 친구의 계정으로 로그인하세요.</p><div class="account"><div><strong>ChatGPT / Codex</strong><p id="codexState">연결 확인 중</p></div><button data-connect="codex" class="outline">구독 계정 연결</button></div><pre id="loginMessage"></pre><a id="codexAuthUrl" class="outline" target="_blank" rel="noopener noreferrer" hidden>ChatGPT 로그인 화면 열기 ↗</a><div class="account"><div><strong>Fish MCP</strong><p id="fishState">패키지 크레딧으로 움직임 생성</p></div><button data-connect="fish" class="outline">계정 연결</button></div><div class="account"><div><strong>Fish Drama3</strong><p>열리는 일반 Chrome/Edge에서 Google 로그인을 직접 완료한 뒤 로그인 창을 닫아 주세요. 그 다음 프로그램에서 진행하세요.</p></div><button data-connect="drama" class="outline">음성 로그인 창 열기</button></div><p id="connectMessage"></p><details><summary>중단된 음성 복구</summary><p>Fish History에서 해당 장면의 Drama3 음성을 내려받아 넣으면 다시 과금하지 않고 이어집니다.</p><label>장면 번호 <input id="recoverScene" type="number" min="1" value="1"></label><input id="recoverFile" type="file" accept="audio/*"><button id="recoverVoice" class="outline">현재 작업에 음성 복구</button></details></dialog>
+<script src="/static/app.js"></script></body></html>
