@@ -1,0 +1,955 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - link "메인으로 이동" [ref=e9] [cursor=pointer]:
+          - /url: https://www.yeogi.com/
+        - generic [ref=e14]:
+          - button "로그인/회원가입" [ref=e17] [cursor=pointer]
+          - button "메뉴 열기" [ref=e20] [cursor=pointer]
+    - navigation [ref=e21]:
+      - generic [ref=e22]:
+        - tablist [ref=e25]:
+          - tab "개요" [selected] [ref=e26] [cursor=pointer]
+          - tab "객실" [ref=e28] [cursor=pointer]
+          - tab "서비스 및 부대시설" [ref=e30] [cursor=pointer]
+          - tab "위치" [ref=e32] [cursor=pointer]
+          - tab "리뷰" [ref=e34] [cursor=pointer]
+        - generic [ref=e37]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: 85,000
+            - generic [ref=e41]: 원
+          - button "객실보기" [ref=e43] [cursor=pointer]
+    - main [ref=e45]:
+      - navigation "breadcrumb" [ref=e47]:
+        - list [ref=e48]:
+          - listitem [ref=e49]:
+            - link "홈" [ref=e50] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e53]:
+            - link "전남광주통합특별시" [ref=e54] [cursor=pointer]:
+              - /url: /accommodation/kr/%EC%A0%84%EB%82%A8%EA%B4%91%EC%A3%BC%ED%86%B5%ED%95%A9%ED%8A%B9%EB%B3%84%EC%8B%9C
+          - listitem [ref=e57]:
+            - link "여수시" [ref=e58] [cursor=pointer]:
+              - /url: /accommodation/kr/%EC%A0%84%EB%82%A8%EA%B4%91%EC%A3%BC%ED%86%B5%ED%95%A9%ED%8A%B9%EB%B3%84%EC%8B%9C/%EC%97%AC%EC%88%98%EC%8B%9C
+          - listitem [ref=e61]:
+            - generic [ref=e62]: 여수 돌산 더 호텔 수
+      - region "숙소 개요" [ref=e63]:
+        - figure "여수 돌산 더 호텔 수 대표 이미지" [ref=e65]:
+          - list [ref=e67]:
+            - img "대표 사진" [ref=e69] [cursor=pointer]
+            - generic [ref=e70] [cursor=pointer]
+            - generic [ref=e71] [cursor=pointer]
+            - generic [ref=e72] [cursor=pointer]
+            - generic [ref=e73] [cursor=pointer]
+            - button "15+" [ref=e75] [cursor=pointer]
+        - generic [ref=e82]:
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - generic [ref=e86]: 호텔 ·
+              - generic [ref=e87]: 비즈니스
+            - heading "여수 돌산 더 호텔 수" [level=1] [ref=e89]
+          - generic [ref=e90]:
+            - button "이 상품 저장하기" [ref=e92] [cursor=pointer]
+            - generic [ref=e97]:
+              - generic [ref=e98]: 85,000
+              - generic [ref=e99]: 원
+        - generic [ref=e100]:
+          - link [ref=e101] [cursor=pointer]:
+            - /url: "#review"
+            - generic [ref=e102]:
+              - term [ref=e103]:
+                - generic [ref=e104]: "9.2"
+                - generic [ref=e107]: 299명 평가
+              - definition [ref=e110]:
+                - paragraph [ref=e111]: 급하게 잡았는데 방도 많았고 오래된 시설치고는 깨끗했어요 첫 느낌좋게 룸을 업그레이드 해주셔서 층도 올라가고 방도 커지고 오션뷰가 되어서~ 기부니가 더 좋았어요 조식도 나름 개안았어요 조식부터 스파클린 와인 맛보고 ㅋㅋ 루프탑 포차가 이리 푸짐할줄알았음 밥안먹고 오는건데 포차거리 굳이 안찾아가도 될정도로 분위기 좋고 라이브도 잘부르시더라구요 다시 숙박할 의향 있어요~~
+          - link "서비스 및 부대시설 미니바 미니바 무선인터넷 무선인터넷 레스토랑 레스토랑 금연 TV 라운지" [ref=e112] [cursor=pointer]:
+            - /url: "#amenity"
+            - generic [ref=e113]:
+              - term [ref=e114]: 서비스 및 부대시설
+              - definition [ref=e117]:
+                - list [ref=e118]:
+                  - listitem [ref=e119]:
+                    - generic [ref=e120]:
+                      - img "미니바" [ref=e121]
+                      - generic [ref=e122]: 미니바
+                  - listitem [ref=e123]:
+                    - generic [ref=e124]:
+                      - img "무선인터넷" [ref=e125]
+                      - generic [ref=e126]: 무선인터넷
+                  - listitem [ref=e127]:
+                    - generic [ref=e128]:
+                      - img "레스토랑" [ref=e129]
+                      - generic [ref=e130]: 레스토랑
+                  - listitem [ref=e131]:
+                    - generic [ref=e132]: 금연
+                  - listitem [ref=e139]:
+                    - generic [ref=e140]: TV
+                  - listitem [ref=e147]:
+                    - generic [ref=e148]: 라운지
+          - link "위치 정보 전남광주통합특별시 여수시 돌산읍 우두리 777 지도 확대보기 여수엑스포역 차량 9분" [ref=e155] [cursor=pointer]:
+            - /url: "#location"
+            - generic [ref=e161]:
+              - term [ref=e162]: 위치 정보
+              - definition [ref=e165]:
+                - list [ref=e167]:
+                  - listitem [ref=e168]:
+                    - text: 전남광주통합특별시 여수시 돌산읍 우두리 777
+                    - button "지도 확대보기" [ref=e171]:
+                      - generic [ref=e172]: 지도보기
+                  - listitem [ref=e173]:
+                    - generic [ref=e176]: 여수엑스포역 차량 9분
+      - region "숙소 상세 정보" [ref=e177]:
+        - generic [ref=e178]:
+          - generic "숙소 이벤트" [ref=e179]:
+            - heading "숙소 이벤트" [level=2] [ref=e181]
+            - generic [ref=e182]:
+              - list [ref=e183]:
+                - listitem [ref=e184]:
+                  - generic [ref=e185]: "#해물삼합 패키지#"
+                - listitem [ref=e186]:
+                  - generic [ref=e187]: "#비비큐 패키지#"
+                - listitem [ref=e188]:
+                  - generic [ref=e189]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+              - button "더보기" [ref=e191] [cursor=pointer]
+          - generic "객실 선택" [ref=e196]:
+            - heading "객실 선택" [level=2] [ref=e198]
+            - list "예약 가능한 객실 목록" [ref=e200]:
+              - listitem [ref=e201]:
+                - generic [ref=e202]:
+                  - button "객실 이미지 보기" [ref=e204] [cursor=pointer]:
+                    - generic [ref=e209]: 1+
+                  - generic [ref=e214]:
+                    - generic [ref=e216]:
+                      - generic [ref=e217]: 프리미엄 더블 (브릿지뷰)
+                      - button "상세 정보" [ref=e221] [cursor=pointer]
+                    - generic [ref=e226]:
+                      - generic [ref=e229]:
+                        - generic [ref=e230]:
+                          - paragraph [ref=e234]: 무료취소 불가
+                          - generic [ref=e235]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e242]:
+                          - generic [ref=e244]:
+                            - generic "태그" [ref=e246]: 반짝특가
+                            - generic [ref=e248]:
+                              - generic [ref=e249]: 90,000원
+                              - generic [ref=e253]:
+                                - generic [ref=e254]: 85,000
+                                - generic [ref=e255]: 원
+                          - button "객실 예약" [ref=e256] [cursor=pointer]
+                      - generic [ref=e258]:
+                        - generic [ref=e259]:
+                          - generic [ref=e260]: 객실정보
+                          - generic [ref=e261]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e262]:
+                          - generic [ref=e263]: 이벤트
+                          - generic [ref=e264]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e265]:
+                          - generic [ref=e266]: 추가정보
+                          - generic [ref=e267]: "취사 불가 / 베드타입 : 더블베드1+침구 1세트"
+              - listitem [ref=e268]:
+                - generic [ref=e269]:
+                  - button "객실 이미지 보기" [ref=e271] [cursor=pointer]
+                  - generic [ref=e276]:
+                    - generic [ref=e278]:
+                      - generic [ref=e279]: 프리미엄 온돌 (브릿지뷰)
+                      - button "상세 정보" [ref=e283] [cursor=pointer]
+                    - generic [ref=e288]:
+                      - generic [ref=e291]:
+                        - generic [ref=e292]:
+                          - paragraph [ref=e296]: 무료취소 불가
+                          - generic [ref=e297]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e304]:
+                          - generic [ref=e306]:
+                            - generic "태그" [ref=e308]: 반짝특가
+                            - generic [ref=e310]:
+                              - generic [ref=e311]: 480,000원
+                              - generic [ref=e315]:
+                                - generic [ref=e316]: 85,000
+                                - generic [ref=e317]: 원
+                          - button "객실 예약" [ref=e318] [cursor=pointer]
+                      - generic [ref=e320]:
+                        - generic [ref=e321]:
+                          - generic [ref=e322]: 객실정보
+                          - generic [ref=e323]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e324]:
+                          - generic [ref=e325]: 이벤트
+                          - generic [ref=e326]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e327]:
+                          - generic [ref=e328]: 추가정보
+                          - generic [ref=e329]: "취사 불가 / 베드타입: 침구3채"
+              - listitem [ref=e330]:
+                - generic [ref=e331]:
+                  - button "객실 이미지 보기" [ref=e333] [cursor=pointer]:
+                    - generic [ref=e338]: 5+
+                  - generic [ref=e343]:
+                    - generic [ref=e345]:
+                      - generic [ref=e346]: 프리미엄 트윈 (오션뷰)
+                      - button "상세 정보" [ref=e350] [cursor=pointer]
+                    - generic [ref=e355]:
+                      - generic [ref=e358]:
+                        - generic [ref=e359]:
+                          - paragraph [ref=e363]: 무료취소 불가
+                          - generic [ref=e364]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e371]:
+                          - generic [ref=e373]:
+                            - generic "태그" [ref=e375]: 반짝특가
+                            - generic [ref=e377]:
+                              - generic [ref=e378]: 350,000원
+                              - generic [ref=e382]:
+                                - generic [ref=e383]: 105,000
+                                - generic [ref=e384]: 원
+                          - button "객실 예약" [ref=e385] [cursor=pointer]
+                      - generic [ref=e387]:
+                        - generic [ref=e388]:
+                          - generic [ref=e389]: 객실정보
+                          - generic [ref=e390]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e391]:
+                          - generic [ref=e392]: 이벤트
+                          - generic [ref=e393]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+              - listitem [ref=e394]:
+                - generic [ref=e395]:
+                  - button "객실 이미지 보기" [ref=e397] [cursor=pointer]:
+                    - generic [ref=e402]: 2+
+                  - generic [ref=e407]:
+                    - generic [ref=e409]:
+                      - generic [ref=e410]: "[조식 2인 무료] 프리미엄 더블 (브릿지뷰)"
+                      - button "상세 정보" [ref=e414] [cursor=pointer]
+                    - generic [ref=e419]:
+                      - generic [ref=e422]:
+                        - generic [ref=e423]:
+                          - paragraph [ref=e427]: 무료취소 불가
+                          - generic [ref=e428]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e435]:
+                          - generic [ref=e441]:
+                            - generic [ref=e442]: 120,000
+                            - generic [ref=e443]: 원
+                          - button "객실 예약" [ref=e444] [cursor=pointer]
+                      - generic [ref=e446]:
+                        - generic [ref=e447]:
+                          - generic [ref=e448]: 객실정보
+                          - generic [ref=e449]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e450]:
+                          - generic [ref=e451]: 이벤트
+                          - generic [ref=e452]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e453]:
+                          - generic [ref=e454]: 패키지
+                          - generic [ref=e455]: 조식 포함 - 2인 제공
+              - listitem [ref=e456]:
+                - generic [ref=e457]:
+                  - button "객실 이미지 보기" [ref=e459] [cursor=pointer]:
+                    - generic [ref=e464]: 1+
+                  - generic [ref=e469]:
+                    - generic [ref=e471]:
+                      - generic [ref=e472]: "[조식 2인 무료] 프리미엄 온돌 (브릿지뷰)"
+                      - button "상세 정보" [ref=e476] [cursor=pointer]
+                    - generic [ref=e481]:
+                      - generic [ref=e484]:
+                        - generic [ref=e485]:
+                          - paragraph [ref=e489]: 무료취소 불가
+                          - generic [ref=e490]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e497]:
+                          - generic [ref=e503]:
+                            - generic [ref=e504]: 120,000
+                            - generic [ref=e505]: 원
+                          - button "객실 예약" [ref=e506] [cursor=pointer]
+                      - generic [ref=e508]:
+                        - generic [ref=e509]:
+                          - generic [ref=e510]: 객실정보
+                          - generic [ref=e511]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e512]:
+                          - generic [ref=e513]: 이벤트
+                          - generic [ref=e514]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e515]:
+                          - generic [ref=e516]: 패키지
+                          - generic [ref=e517]: 조식 포함 - 2인 제공
+              - listitem [ref=e518]:
+                - generic [ref=e519]:
+                  - button "객실 이미지 보기" [ref=e521] [cursor=pointer]:
+                    - generic [ref=e526]: 6+
+                  - generic [ref=e531]:
+                    - generic [ref=e533]:
+                      - generic [ref=e534]: "[조식 2인 무료] 프리미엄 트윈 (오션뷰)"
+                      - button "상세 정보" [ref=e538] [cursor=pointer]
+                    - generic [ref=e543]:
+                      - generic [ref=e546]:
+                        - generic [ref=e547]:
+                          - paragraph [ref=e551]: 무료취소 불가
+                          - generic [ref=e552]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e559]:
+                          - generic [ref=e565]:
+                            - generic [ref=e566]: 140,000
+                            - generic [ref=e567]: 원
+                          - button "객실 예약" [ref=e568] [cursor=pointer]
+                      - generic [ref=e570]:
+                        - generic [ref=e571]:
+                          - generic [ref=e572]: 객실정보
+                          - generic [ref=e573]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e574]:
+                          - generic [ref=e575]: 이벤트
+                          - generic [ref=e576]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e577]:
+                          - generic [ref=e578]: 패키지
+                          - generic [ref=e579]: 조식 포함 - 2인 제공
+              - listitem [ref=e580]:
+                - generic [ref=e581]:
+                  - button "객실 이미지 보기" [ref=e583] [cursor=pointer]:
+                    - generic [ref=e588]: 6+
+                  - generic [ref=e593]:
+                    - generic [ref=e595]:
+                      - generic [ref=e596]: 프리미엄 트윈 (오션뷰) [비비큐 패키지]
+                      - button "상세 정보" [ref=e600] [cursor=pointer]
+                    - generic [ref=e605]:
+                      - generic [ref=e608]:
+                        - generic [ref=e609]:
+                          - paragraph [ref=e613]: 무료취소 불가
+                          - generic [ref=e614]: 입실 15:00·퇴실 12:00
+                        - generic [ref=e621]:
+                          - generic [ref=e627]:
+                            - generic [ref=e628]: 158,500
+                            - generic [ref=e629]: 원
+                          - button "객실 예약" [ref=e630] [cursor=pointer]
+                      - generic [ref=e632]:
+                        - generic [ref=e633]:
+                          - generic [ref=e634]: 객실정보
+                          - generic [ref=e635]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e636]:
+                          - generic [ref=e637]: 이벤트
+                          - generic [ref=e638]: "#비비큐 패키지#"
+                        - generic [ref=e639]:
+                          - generic [ref=e640]: 패키지
+                          - generic [ref=e641]: BBQ 2인 세트 (박수무관 1회 제공)
+              - listitem [ref=e642]:
+                - generic [ref=e643]:
+                  - button "객실 이미지 보기" [ref=e645] [cursor=pointer]:
+                    - generic [ref=e650]: 6+
+                  - generic [ref=e655]:
+                    - generic [ref=e657]:
+                      - generic [ref=e658]: 프리미엄 트윈 (오션뷰) [해물삼합 패키지]
+                      - button "상세 정보" [ref=e662] [cursor=pointer]
+                    - generic [ref=e667]:
+                      - generic [ref=e670]:
+                        - generic [ref=e671]:
+                          - paragraph [ref=e675]: 무료취소 불가
+                          - generic [ref=e676]: 입실 15:00·퇴실 12:00
+                        - generic [ref=e683]:
+                          - generic [ref=e689]:
+                            - generic [ref=e690]: 163,000
+                            - generic [ref=e691]: 원
+                          - button "객실 예약" [ref=e692] [cursor=pointer]
+                      - generic [ref=e694]:
+                        - generic [ref=e695]:
+                          - generic [ref=e696]: 객실정보
+                          - generic [ref=e697]: 기준3인 · 최대4인 (유료)
+                        - generic [ref=e698]:
+                          - generic [ref=e699]: 이벤트
+                          - generic [ref=e700]: "#해물삼합 패키지#"
+                        - generic [ref=e701]:
+                          - generic [ref=e702]: 패키지
+                          - generic [ref=e703]: BBQ 해물삼합 1판 (박수무관 1회 제공)
+              - listitem [ref=e704]:
+                - generic [ref=e705]:
+                  - button "객실 이미지 보기" [ref=e707] [cursor=pointer]:
+                    - generic [ref=e712]: 11+
+                  - generic [ref=e717]:
+                    - generic [ref=e719]:
+                      - generic [ref=e720]: 럭셔리 스위트 (오션뷰)
+                      - button "상세 정보" [ref=e724] [cursor=pointer]
+                    - generic [ref=e729]:
+                      - generic [ref=e732]:
+                        - generic [ref=e733]:
+                          - paragraph [ref=e737]: 무료취소 불가
+                          - generic [ref=e738]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e745]:
+                          - generic [ref=e746]:
+                            - generic [ref=e747]:
+                              - generic "태그" [ref=e749]: 반짝특가
+                              - generic [ref=e751]:
+                                - generic [ref=e752]: 750,000원
+                                - generic [ref=e756]:
+                                  - generic [ref=e757]: 195,000
+                                  - generic [ref=e758]: 원
+                            - generic [ref=e759]: 이 가격으로 남은 객실 2개
+                          - button "객실 예약" [ref=e760] [cursor=pointer]
+                      - generic [ref=e762]:
+                        - generic [ref=e763]:
+                          - generic [ref=e764]: 객실정보
+                          - generic [ref=e765]: 기준4인 · 최대6인 (유료)
+                        - generic [ref=e766]:
+                          - generic [ref=e767]: 이벤트
+                          - generic [ref=e768]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+              - listitem [ref=e769]:
+                - generic [ref=e770]:
+                  - button "객실 이미지 보기" [ref=e772] [cursor=pointer]:
+                    - generic [ref=e777]: 12+
+                  - generic [ref=e782]:
+                    - generic [ref=e784]:
+                      - generic [ref=e785]: "[조식 2인 무료+와인 2잔 증정] 럭셔리 스위트 (오션뷰)"
+                      - button "상세 정보" [ref=e789] [cursor=pointer]
+                    - generic [ref=e794]:
+                      - generic [ref=e797]:
+                        - generic [ref=e798]:
+                          - paragraph [ref=e802]: 무료취소 불가
+                          - generic [ref=e803]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e810]:
+                          - generic [ref=e811]:
+                            - generic [ref=e816]:
+                              - generic [ref=e817]: 230,000
+                              - generic [ref=e818]: 원
+                            - generic [ref=e819]: 이 가격으로 남은 객실 2개
+                          - button "객실 예약" [ref=e820] [cursor=pointer]
+                      - generic [ref=e822]:
+                        - generic [ref=e823]:
+                          - generic [ref=e824]: 객실정보
+                          - generic [ref=e825]: 기준4인 · 최대6인 (유료)
+                        - generic [ref=e826]:
+                          - generic [ref=e827]: 이벤트
+                          - generic [ref=e828]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e829]:
+                          - generic [ref=e830]: 패키지
+                          - generic [ref=e831]: 조식 포함 - 2인 제공, 와인 2잔
+              - listitem [ref=e832]:
+                - generic [ref=e833]:
+                  - button "객실 이미지 보기" [ref=e835] [cursor=pointer]:
+                    - generic [ref=e840]: 10+
+                  - generic [ref=e845]:
+                    - generic [ref=e847]:
+                      - generic [ref=e848]: 팔라 스위트 (오션뷰)
+                      - button "상세 정보" [ref=e852] [cursor=pointer]
+                    - generic [ref=e857]:
+                      - generic [ref=e860]:
+                        - generic [ref=e861]:
+                          - paragraph [ref=e865]: 무료취소 불가
+                          - generic [ref=e866]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e873]:
+                          - generic [ref=e874]:
+                            - generic [ref=e875]:
+                              - generic "태그" [ref=e877]: 반짝특가
+                              - generic [ref=e879]:
+                                - generic [ref=e880]: 1,100,000원
+                                - generic [ref=e884]:
+                                  - generic [ref=e885]: 295,000
+                                  - generic [ref=e886]: 원
+                            - generic [ref=e887]: 이 가격으로 남은 객실 1개
+                          - button "객실 예약" [ref=e888] [cursor=pointer]
+                      - generic [ref=e890]:
+                        - generic [ref=e891]:
+                          - generic [ref=e892]: 객실정보
+                          - generic [ref=e893]: 기준6인 · 최대8인 (유료)
+                        - generic [ref=e894]:
+                          - generic [ref=e895]: 이벤트
+                          - generic [ref=e896]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+              - listitem [ref=e897]:
+                - generic [ref=e898]:
+                  - button "객실 이미지 보기" [ref=e900] [cursor=pointer]:
+                    - generic [ref=e905]: 11+
+                  - generic [ref=e910]:
+                    - generic [ref=e912]:
+                      - generic [ref=e913]: "[조식 2인 무료+와인 2잔 증정] 팔라 스위트 (오션뷰)"
+                      - button "상세 정보" [ref=e917] [cursor=pointer]
+                    - generic [ref=e922]:
+                      - generic [ref=e925]:
+                        - generic [ref=e926]:
+                          - paragraph [ref=e930]: 무료취소 불가
+                          - generic [ref=e931]: 입실 15:00·퇴실 11:00
+                        - generic [ref=e938]:
+                          - generic [ref=e939]:
+                            - generic [ref=e944]:
+                              - generic [ref=e945]: 330,000
+                              - generic [ref=e946]: 원
+                            - generic [ref=e947]: 이 가격으로 남은 객실 1개
+                          - button "객실 예약" [ref=e948] [cursor=pointer]
+                      - generic [ref=e950]:
+                        - generic [ref=e951]:
+                          - generic [ref=e952]: 객실정보
+                          - generic [ref=e953]: 기준6인 · 최대8인 (유료)
+                        - generic [ref=e954]:
+                          - generic [ref=e955]: 이벤트
+                          - generic [ref=e956]: 조식 이용 시 와인제공+아쿠아플라넷&크루즈 할인
+                        - generic [ref=e957]:
+                          - generic [ref=e958]: 패키지
+                          - generic [ref=e959]: 조식 포함 - 2인 제공, 와인 2잔
+          - generic "숙소 소개" [ref=e960]:
+            - heading "숙소 소개" [level=2] [ref=e963]
+            - paragraph [ref=e966]: 여수엑스포역에서 차량 9분 거리에 위치입니다 돌산공원이 차량 5분, 여수해양공원이 차량 9분거리입니다 오동도가 차량 17분 거리로 주요관광지와 인접합니다
+          - generic "서비스 및 부대시설" [ref=e967]:
+            - heading "서비스 및 부대시설" [level=2] [ref=e970]
+            - generic [ref=e972]:
+              - generic [ref=e973]: 미니바
+              - generic [ref=e980]: 무선인터넷
+              - generic [ref=e987]: 레스토랑
+              - generic [ref=e994]: 금연
+              - generic [ref=e1001]: TV
+              - generic [ref=e1008]: 라운지
+              - generic [ref=e1015]: 무료주차
+              - generic [ref=e1022]: 편의점
+              - generic [ref=e1029]: 장애인편의
+              - generic [ref=e1036]: 루프탑수영장
+              - generic [ref=e1043]: 스프링클러
+          - generic "숙소 이용 정보" [ref=e1050]:
+            - heading "숙소 이용 정보" [level=2] [ref=e1053]
+            - generic [ref=e1054]:
+              - generic [ref=e1056]:
+                - heading "일회용품 줄이기 함께 실천해요" [level=3] [ref=e1057]
+                - list [ref=e1061]:
+                  - listitem [ref=e1062]: 자원재활용법에 따라 2024년 3월 29일부터 일부 숙소에서는 일회용 어메니티가 무료로 제공되지 않아요.
+                  - listitem [ref=e1063]: 일회용 어메니티 별도 구매는 숙소에 문의해주세요.
+              - generic [ref=e1065]:
+                - heading "기본정보" [level=3] [ref=e1066]
+                - list [ref=e1067]:
+                  - listitem [ref=e1068]:
+                    - paragraph [ref=e1069]: 비수기 & 성수기 / 당일 현장 상황에 따라 체크인이 지연될 수 있습니다
+                  - listitem [ref=e1070]:
+                    - paragraph [ref=e1071]: 3연박 이상 투숙시 침구교체 1회 가능
+                  - listitem [ref=e1072]:
+                    - paragraph [ref=e1073]: 반려동물 동반금지
+              - generic [ref=e1075]:
+                - heading "인원 추가 정보" [level=3] [ref=e1076]
+                - list [ref=e1077]:
+                  - listitem [ref=e1078]:
+                    - paragraph [ref=e1079]: 기준 인원 외 인원 추가 시, 1인 20,000원
+                  - listitem [ref=e1080]:
+                    - paragraph [ref=e1081]: "침구 추가 : 1채 20,000원"
+                  - listitem [ref=e1082]:
+                    - paragraph [ref=e1083]: 영유아 인원수 포함 / 최대인원 초과불가
+                  - listitem [ref=e1084]:
+                    - paragraph [ref=e1085]: 현장 결제
+              - generic [ref=e1087]:
+                - heading "취사 시설" [level=3] [ref=e1088]
+                - list [ref=e1089]:
+                  - listitem [ref=e1090]:
+                    - paragraph [ref=e1091]: 전 객실 취사 불가
+              - generic [ref=e1093]:
+                - heading "부대시설 정보" [level=3] [ref=e1094]
+                - list [ref=e1095]:
+                  - listitem [ref=e1096]:
+                    - paragraph [ref=e1097]: 연회장
+                  - listitem [ref=e1098]:
+                    - paragraph [ref=e1099]: 카페 / 1층 / 09:00~19:00
+                  - listitem [ref=e1100]:
+                    - paragraph [ref=e1101]: CU 편의점 / 1층 / 24시간 / 무인 운영 시간 상시 변동
+                  - listitem [ref=e1102]:
+                    - paragraph [ref=e1103]: 다기야 / 1층 / 17:00~24:00 (라스트 오더 23:30)
+                  - listitem [ref=e1104]:
+                    - paragraph [ref=e1105]: 낭만포차 야해(夜海) / 8층 루프탑 / 18:00~23:00 / 매주 월요일 휴무
+                  - listitem [ref=e1106]:
+                    - paragraph [ref=e1107]: "[루프탑 수영장 이용 안내]"
+                  - listitem [ref=e1108]:
+                    - paragraph [ref=e1109]: "운영 일정 및 시간 : 2026년 6월 20일~9월 27일 15:00~21:00 / 무료"
+                  - listitem [ref=e1110]:
+                    - paragraph [ref=e1111]: 수영복, 수영모, 아쿠아 슈즈 착용 후 이용 가능 (미 착용 시 이용 불가)
+                  - listitem [ref=e1112]:
+                    - paragraph [ref=e1113]: 유아&미성년자는 보호자 동반 하에 입장 가능
+                  - listitem [ref=e1114]:
+                    - paragraph [ref=e1115]: 객실 타올 이용 불가, 개인 수건 이용 가능
+                  - listitem [ref=e1116]:
+                    - paragraph [ref=e1117]: 대형 튜브 이용 불가
+                  - listitem [ref=e1118]:
+                    - paragraph [ref=e1119]: 온수/미온수가 아닌 냉수로 운영
+                  - listitem [ref=e1120]:
+                    - paragraph [ref=e1121]: 기상 상황 및 호텔 시설 점검 등 상황에 따라 별도 공지 없이 운영에 변동이 있을 수 있습니다
+                  - listitem [ref=e1122]:
+                    - paragraph [ref=e1123]: "자세한 운영 일정 및 문의는 호텔로 부탁드립니다 (문의: 061-681-1111)"
+              - generic [ref=e1125]:
+                - heading "조식 정보" [level=3] [ref=e1126]
+                - list [ref=e1127]:
+                  - listitem [ref=e1128]:
+                    - paragraph [ref=e1129]: 한식당 / 1층 / 07:00~10:00 (Last Order 09:30) / 상시 뷔페 / Special 스파클링 와인 제공
+                  - listitem [ref=e1130]:
+                    - paragraph [ref=e1131]: 대인 (14세 이상) 24,000원 / 사전 결제 19,900원
+                  - listitem [ref=e1132]:
+                    - paragraph [ref=e1133]: 소인 (7세~13세) 21,000원 / 사전 결제 15,900원
+                  - listitem [ref=e1134]:
+                    - paragraph [ref=e1135]: 소인 (6세 이하) 10,000원 / 36개월 미만 무료 (생년월일 증빙서류 필수 지참)
+                  - listitem [ref=e1136]:
+                    - paragraph [ref=e1137]: 현장 결제
+              - generic [ref=e1139]:
+                - heading "취소 및 환불 규정" [level=3] [ref=e1140]
+                - list [ref=e1141]:
+                  - listitem [ref=e1142]:
+                    - paragraph [ref=e1143]: "[비수기]"
+                  - listitem [ref=e1144]:
+                    - paragraph [ref=e1145]: "체크인 기준 4일 전 18시까지 : 100% 환불"
+                  - listitem [ref=e1146]:
+                    - paragraph [ref=e1147]: "체크인 기준 4일 전 18시 이후~3일 전 18시까지 : 70% 환불"
+                  - listitem [ref=e1148]:
+                    - paragraph [ref=e1149]: "체크인 기준 3일 전 18시 이후~1일 전 18시까지 : 50% 환불"
+                  - listitem [ref=e1150]:
+                    - paragraph [ref=e1151]: "체크인 기준 1일 전 18시 이후~당일 및 No-show : 환불 불가"
+                  - listitem [ref=e1152]:
+                    - paragraph [ref=e1153]: "[성수기]"
+                  - listitem [ref=e1154]:
+                    - paragraph [ref=e1155]: "체크인 기준 8일 전 : 100% 환불"
+                  - listitem [ref=e1156]:
+                    - paragraph [ref=e1157]: "체크인 기준 7~6일 전 : 70% 환불"
+                  - listitem [ref=e1158]:
+                    - paragraph [ref=e1159]: "체크인 기준 5~4일 전 : 50% 환불"
+                  - listitem [ref=e1160]:
+                    - paragraph [ref=e1161]: "체크인 기준 3일 전~당일 및 No-show : 환불 불가"
+                  - listitem [ref=e1162]:
+                    - paragraph [ref=e1163]: 취소, 환불시 수수료가 발생할 수 있습니다
+              - generic [ref=e1165]:
+                - heading "확인사항 및 기타" [level=3] [ref=e1166]
+                - list [ref=e1167]:
+                  - listitem [ref=e1168]:
+                    - paragraph [ref=e1169]: 최대인원 초과시 입실 불가합니다
+                  - listitem [ref=e1170]:
+                    - paragraph [ref=e1171]: 위의 정보는 호텔의 사정에 따라 변경될 수 있습니다
+                  - listitem [ref=e1172]:
+                    - paragraph [ref=e1173]: 해당 이미지는 실제와 상이 할 수 있습니다
+                  - listitem [ref=e1174]:
+                    - paragraph [ref=e1175]: 체크인 시 배정 또는 베드타입 미기재 상품은 특정객실과 베드타입을 보장하지 않습니다
+                  - listitem [ref=e1176]:
+                    - paragraph [ref=e1177]: 해당 객실가는 세금, 봉사료가 포함된 금액입니다
+                  - listitem [ref=e1178]:
+                    - paragraph [ref=e1179]: 미성년자는 보호자 동반없이 이용하실 수 없습니다
+                  - listitem [ref=e1180]:
+                    - paragraph [ref=e1181]: 당 호텔은 투숙객 안전을 위해 세스코의 감염병 예방 차원으로 환경병에 신고 완료한 약제를 사용하여 전문 살균 서비스를 완료하였습니다
+          - generic "취소 및 환불 규정" [ref=e1182]:
+            - heading "취소 및 환불 규정" [level=2] [ref=e1185]
+            - list [ref=e1188]:
+              - listitem [ref=e1189]: 객실별 취소 정책이 상이하니 객실 상세정보에서 확인해주세요.
+          - button "판매자 정보" [ref=e1190] [cursor=pointer]:
+            - heading "판매자 정보" [level=2] [ref=e1192]
+        - generic "혜택 안내" [ref=e1196]:
+          - generic "결제 혜택" [ref=e1198]:
+            - generic [ref=e1200]:
+              - heading "결제 혜택" [level=2] [ref=e1201]
+              - button "더보기" [ref=e1202] [cursor=pointer]
+            - generic [ref=e1207]:
+              - generic [ref=e1208]: 토스페이
+              - list [ref=e1210]:
+                - listitem [ref=e1211]:
+                  - generic [ref=e1212]: 3만원 이상 결제 시, 10% / 최대 1만원 할인 (오전 10시, 일 280명)
+                - listitem [ref=e1213]:
+                  - generic [ref=e1214]: 2만원 이상 결제 시, 2천원 할인 (오후 4시, 일 1,070명)
+                - listitem [ref=e1215]:
+                  - generic [ref=e1216]: 10만원 이상 토스페이 첫 결제 시, 3천원 할인 (오전 10시, 일 200명)
+      - region "숙소 위치 및 주변 정보" [ref=e1217]:
+        - heading "위치" [level=2] [ref=e1219]
+        - generic [ref=e1220]:
+          - button "지도 확대보기" [ref=e1223] [cursor=pointer]
+          - list [ref=e1227]:
+            - generic [ref=e1228]:
+              - paragraph [ref=e1229]: 전남광주통합특별시 여수시 돌산읍 우두리 777
+              - button "주소복사" [ref=e1231] [cursor=pointer]
+            - list [ref=e1239]:
+              - listitem [ref=e1240]: 여수엑스포역 차량 9분
+              - listitem [ref=e1241]: 돌산공원 차량 3분
+              - listitem [ref=e1242]: 여수세계박람회 차량 6분
+      - region "리얼 리뷰" [ref=e1243]:
+        - generic [ref=e1244]:
+          - generic [ref=e1245]:
+            - heading "리얼 리뷰 9.2" [level=2] [ref=e1249]
+            - generic [ref=e1250]: 299명 평가 ・ 299개 리뷰
+          - generic [ref=e1251]:
+            - img [ref=e1252] [cursor=pointer]
+            - generic [ref=e1254] [cursor=pointer]: 추천순
+        - generic [ref=e1255]:
+          - generic [ref=e1257]:
+            - generic [ref=e1263]:
+              - generic "태그" [ref=e1265]: 베스트리뷰
+              - paragraph [ref=e1267]: 하수진4
+              - paragraph [ref=e1268]: 리뷰 8 · 사진 28 · 장소 8
+            - generic [ref=e1269]:
+              - generic [ref=e1270]: 11일 전
+              - generic "Slide Container" [ref=e1288]:
+                - generic [ref=e1289]:
+                  - group "Slide" [ref=e1290]:
+                    - generic [ref=e1291] [cursor=pointer]
+                  - group "Slide" [ref=e1295]:
+                    - generic [ref=e1296] [cursor=pointer]
+                  - group "Slide" [ref=e1300]:
+                    - generic [ref=e1301] [cursor=pointer]
+                  - group "Slide" [ref=e1305]:
+                    - generic [ref=e1306] [cursor=pointer]
+                  - group "Slide" [ref=e1310]:
+                    - generic [ref=e1311] [cursor=pointer]
+                - button "Next Slide"
+              - paragraph [ref=e1316]: "[조식 2인 무료] 스탠다드 싱글 트윈 (브릿지뷰)"
+              - generic [ref=e1317]:
+                - paragraph [ref=e1319]: 급하게 잡았는데 방도 많았고 오래된 시설치고는 깨끗했어요 첫 느낌좋게 룸을 업그레이드 해주셔서 층도 올라가고 방도 커지고 오션뷰가 되어서~ 기부니가 더 좋았어요 조식도 나름 개안았어요 조식부터 스파클린 와인 맛보고 ㅋㅋ 루프탑 포차가 이리 푸짐할줄알았음 밥안먹고 오는건데 포차거리 굳이 안찾아가도 될정도로 분위기 좋고 라이브도 잘부르시더라구요 다시 숙박할 의향 있어요~~
+                - button "더보기" [ref=e1321] [cursor=pointer]
+              - generic [ref=e1327]:
+                - generic [ref=e1328]:
+                  - heading "제휴점 답변 4일 전" [level=3] [ref=e1329]:
+                    - text: 제휴점 답변
+                    - generic [ref=e1330]: 4일 전
+                  - paragraph [ref=e1332]: 하수진4님 안녕하세요. 안녕하세요, 더 호텔 수 입니다. 저희 호텔 투숙해주신 고객님께 감사드립니다.! 호텔 투숙하시는 기간동안 만족한 여행이 되셨다니 참으로 다행입니다.! 저희 호텔은 항상 투숙객분들에게 좋은 객실과 맛있는 음식, 친절한 응대를 제공 해드리기 위해 최선을 다하도록 노력하고 있으니 다음에도 이용 계획이 있으시다면 꼭 다시 뵙기를 기대하겠습니다~감사합니다.
+                - button "더보기" [ref=e1334] [cursor=pointer]
+          - generic [ref=e1340]:
+            - generic [ref=e1346]:
+              - generic "태그" [ref=e1348]: 베스트리뷰
+              - paragraph [ref=e1350]: 아흔떡볶이
+              - paragraph [ref=e1351]: 리뷰 59 · 사진 141 · 장소 41
+            - generic [ref=e1352]:
+              - generic [ref=e1353]: 1개월 전
+              - generic "Slide Container" [ref=e1371]:
+                - generic [ref=e1372]:
+                  - group "Slide" [ref=e1373]:
+                    - generic [ref=e1374] [cursor=pointer]
+                  - group "Slide" [ref=e1378]:
+                    - generic [ref=e1379] [cursor=pointer]
+                  - group "Slide" [ref=e1383]:
+                    - generic [ref=e1384] [cursor=pointer]
+                - button "Next Slide"
+              - paragraph [ref=e1389]: "[조식 2인 무료]스탠다드 더블 (브릿지뷰)"
+              - generic [ref=e1390]:
+                - paragraph [ref=e1392]: 돌산대교 바로 옆이라 객실과 옥상 루프탑에서 바라보는 여수 밤바다 야경이 정말 훌륭합니다. 낭만포차나 이순신광장 등 주요 관광지 접근성도 좋아 이동하기 편했습니다. 객실은 깨끗하고 쾌적하게 관리되어 있으며, 스타일러와 전자레인지 등 편의 가전이 갖춰져 있어 머무는 내내 편리했습니다. 가격 대비 가성비가 훌륭하고 조식도 깔끔하고 알차 만족스러웠습니다. 여수 여행 시 편안한 휴식과 멋진 전망을 모두 잡고 싶은 분들께 적극 추천합니다. 낭만포차에서 술한잔하기도 좋고 분위기도 좋습니다^^
+                - button "더보기" [ref=e1394] [cursor=pointer]
+              - generic [ref=e1400]:
+                - generic [ref=e1401]:
+                  - heading "제휴점 답변 1개월 전" [level=3] [ref=e1402]:
+                    - text: 제휴점 답변
+                    - generic [ref=e1403]: 1개월 전
+                  - paragraph [ref=e1405]: 아흔떡볶이님 안녕하세요. 안녕하세요, 더 호텔 수 입니다. 저희 호텔 투숙해주신 고객님께 감사드립니다.! 호텔 투숙하시는 기간동안 만족한 여행이 되셨다니 참으로 다행입니다.! 저희 호텔은 항상 투숙객분들에게 깨끗하고 편안한 객실을 제공해드리기 위해 최선을 다하도록 노력하고 있으니 다음에도 이용 계획이 있으시다면 꼭 다시 뵙기를 기대하겠습니다~감사합니다.
+                - button "더보기" [ref=e1407] [cursor=pointer]
+          - generic [ref=e1413]:
+            - generic [ref=e1419]:
+              - generic "태그" [ref=e1421]: 베스트리뷰
+              - paragraph [ref=e1423]: 유네스코비행
+              - paragraph [ref=e1424]: 리뷰 9 · 사진 26 · 장소 8
+            - generic [ref=e1425]:
+              - generic [ref=e1426]: 2개월 전
+              - generic "Slide Container" [ref=e1444]:
+                - generic [ref=e1445]:
+                  - group "Slide" [ref=e1446]:
+                    - generic [ref=e1447] [cursor=pointer]
+                  - group "Slide" [ref=e1451]:
+                    - generic [ref=e1452] [cursor=pointer]
+                  - group "Slide" [ref=e1456]:
+                    - generic [ref=e1457] [cursor=pointer]
+                - button "Next Slide"
+              - paragraph [ref=e1462]: "[조식 2인 무료] 디럭스 트윈 브릿지 (비전망)"
+              - generic [ref=e1463]:
+                - paragraph [ref=e1465]: 급하게 여름 휴가 숙소를 정했어요 지역도 여수로 잡았구요 아이와 함께 하는 휴가로 여러가지 생각할 부분이 많았어요 2일 연박을 했고 아이 조식만 이틀 추가했어요 많은 리뷰에서 조식이 맛있다고 봤는데 막상 먹어보니 이해가 되더라구요 이틀동안 조식메뉴가 소소하게 조금씩 바꿔서 좋았어요 첫날 수영장에서 아이와 함께 잘 놀았어요 사람들이 많아져서 마무리 짓고 길진 않았지만 재밌게 놀았습니다 객실에 큰 냉장고와 스타일러까지 있어 야무지게 잘 사용하고 2일 잘 지냈습니다 다음에도 또 들릴게요
+                - button "더보기" [ref=e1467] [cursor=pointer]
+              - generic [ref=e1473]:
+                - generic [ref=e1474]:
+                  - heading "제휴점 답변 2개월 전" [level=3] [ref=e1475]:
+                    - text: 제휴점 답변
+                    - generic [ref=e1476]: 2개월 전
+                  - paragraph [ref=e1478]: 유네스코비행님 안녕하세요. 안녕하세요, 더 호텔 수 입니다. 저희 호텔 투숙해주신 고객님께 감사드립니다.! 호텔 투숙하시는 기간동안 만족한 여행이 되셨다니 참으로 다행입니다.! 저희 호텔은 항상 투숙객분들에게 맛있는 조식과 좋은 투숙을 위해 최선을 다하도록 노력하고 있으니 다음에도 이용 계획이 있으시다면 꼭 다시 뵙기를 기대하겠습니다~감사합니다.
+                - button "더보기" [ref=e1480] [cursor=pointer]
+          - generic [ref=e1486]:
+            - generic [ref=e1492]:
+              - paragraph [ref=e1493]: 킴벌리클락
+              - paragraph [ref=e1494]: 리뷰 30 · 사진 70 · 장소 26
+            - generic [ref=e1495]:
+              - generic [ref=e1496]: 10일 전
+              - generic "Slide Container" [ref=e1511]:
+                - generic [ref=e1512]:
+                  - group "Slide" [ref=e1513]:
+                    - generic [ref=e1514] [cursor=pointer]
+                  - group "Slide" [ref=e1518]:
+                    - generic [ref=e1519] [cursor=pointer]
+                  - group "Slide" [ref=e1523]:
+                    - generic [ref=e1524] [cursor=pointer]
+                - button "Next Slide"
+              - paragraph [ref=e1529]: 스탠다드 싱글 트윈 (브릿지뷰)
+              - generic [ref=e1530]:
+                - paragraph [ref=e1532]: 전반적으로 너무 만족스러운 숙소입니다. 1. 청결도 깨끗합니다. 관리도 잘 하시는 거 같아서 깨끗합니다. 다른 곳보다도 더 깔끔한 것 같아요. 2. 주차 주차 공간이 엄청나게 많고 넓은 건 아니지만 그래도 공간이 부족하지 않습니다. 지하 주차장도 있고 야외에도 있어서 넉넉합니다. 3. 위치 낭만포차하고 큰 다리 하나만 건너면 바로 있어서 밥먹고 구경하기 좋습니다. 가성비 좋고 깔끔한 좋은 숙소입니다. 완전 강추입니다. 4. 시설 방 안에 주방시설있고 전자레인지도 있습니다. 스타일러도 있어서 좋습니다.
+                - button "더보기" [ref=e1534] [cursor=pointer]
+              - generic [ref=e1540]:
+                - generic [ref=e1541]:
+                  - heading "제휴점 답변 4일 전" [level=3] [ref=e1542]:
+                    - text: 제휴점 답변
+                    - generic [ref=e1543]: 4일 전
+                  - paragraph [ref=e1545]: 킴벌리클락님 안녕하세요. 안녕하세요, 더 호텔 수 입니다. 저희 호텔 투숙해주신 고객님께 감사드립니다.! 리뷰 별 만점을 주신것도 모자라 저희 호텔의 만족하신 점을 상세히 구분해서 적어주셔서 너무너무 감사드립니다.! 고객님께서 만점을 주신만큼!! 앞으로도 더욱 더 발전하는 더 호텔 수가 되겠습니다.! 다음에도 이용 계획이 있으시다면! 기대가 실망으로 바뀌지 않게 항상 노력하겠습니다.! 감사합니다.
+                - button "더보기" [ref=e1547] [cursor=pointer]
+              - paragraph [ref=e1555]: 1명이 이 리뷰를 추천했어요
+          - generic [ref=e1557]:
+            - generic [ref=e1563]:
+              - paragraph [ref=e1564]: 킴벌리클락
+              - paragraph [ref=e1565]: 리뷰 30 · 사진 70 · 장소 26
+            - generic [ref=e1566]:
+              - generic [ref=e1567]: 10일 전
+              - generic "Slide Container" [ref=e1582]:
+                - generic [ref=e1583]:
+                  - group "Slide" [ref=e1584]:
+                    - generic [ref=e1585] [cursor=pointer]
+                  - group "Slide" [ref=e1589]:
+                    - generic [ref=e1590] [cursor=pointer]
+                  - group "Slide" [ref=e1594]:
+                    - generic [ref=e1595] [cursor=pointer]
+                - button "Next Slide"
+              - paragraph [ref=e1600]: 스탠다드 싱글 트윈 (브릿지뷰)
+              - generic [ref=e1601]:
+                - paragraph [ref=e1603]: 전반적으로 너무 너무 만족스러운 숙소입니다. 가성비가 너무 좋아요. 1. 청결도 깨끗합니다. 관리도 잘 하시는 거 같아서 다른 곳보다도 더 깔끔한 것 같아요. 2. 주차 지하 주차장도 있고 야외에도 있어서 아주 넉넉합니다. 3. 위치 낭만포차하고 큰 다리 하나만 건너면 바로 있어서 산책하면서 구경하기 좋습니다. 4. 시설 방 안에 주방시설있고 전자레인지도 있습니다. 스타일러도 있어서 좋습니다. 방안에서 다 할 수 있습니다. 가성비 좋고 깔끔한 좋은 숙소입니다. 완전 강추입니다.
+                - button "더보기" [ref=e1605] [cursor=pointer]
+              - generic [ref=e1611]:
+                - generic [ref=e1612]:
+                  - heading "제휴점 답변 4일 전" [level=3] [ref=e1613]:
+                    - text: 제휴점 답변
+                    - generic [ref=e1614]: 4일 전
+                  - paragraph [ref=e1616]: 킴벌리클락님 안녕하세요. 안녕하세요, 더 호텔 수 입니다. 저희 호텔 투숙해주신 고객님께 감사드립니다.! 리뷰 별 만점을 주신것도 모자라 저희 호텔의 만족하신 점을 상세히 구분해서 적어주셔서 너무너무 감사드립니다.! 고객님께서 만점을 주신만큼!! 앞으로도 더욱 더 발전하는 더 호텔 수가 되겠습니다.! 다음에도 이용 계획이 있으시다면! 기대가 실망으로 바뀌지 않게 항상 노력하겠습니다.! 감사합니다.
+                - button "더보기" [ref=e1618] [cursor=pointer]
+      - region "다른 고객이 본 비슷한 숙소" [ref=e1623]:
+        - heading "다른 고객이 본 비슷한 숙소" [level=2] [ref=e1625]
+      - generic "자주 묻는 질문" [ref=e1626]:
+        - generic [ref=e1627]:
+          - heading "숙소에 자주 묻는 질문" [level=2] [ref=e1628]
+          - generic [ref=e1629]:
+            - generic [ref=e1632]: AI가 숙소 정보를 기반으로 정리했어요
+            - button "popper-element" [ref=e1633] [cursor=pointer]
+        - generic [ref=e1637]:
+          - list [ref=e1639]:
+            - listitem [ref=e1640]:
+              - button "여수 돌산 더 호텔 수 조식 뷔페는 언제, 어디서 이용할 수 있나요?" [ref=e1641] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 조식 뷔페는 언제, 어디서 이용할 수 있나요?" [level=3] [ref=e1642]:
+                  - generic [ref=e1643]: Q
+                  - paragraph [ref=e1644]: 여수 돌산 더 호텔 수 조식 뷔페는 언제, 어디서 이용할 수 있나요?
+              - generic: 여수 돌산 더 호텔 수 조식은 1층 한식당에서 오전 7시부터 10시까지 운영됩니다. 뷔페식으로 제공되며, 스파클링 와인도 함께 즐기실 수 있습니다.
+            - listitem [ref=e1648]:
+              - button "여수 돌산 더 호텔 수 조식 뷔페 가격은 얼마인가요?" [ref=e1649] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 조식 뷔페 가격은 얼마인가요?" [level=3] [ref=e1650]:
+                  - generic [ref=e1651]: Q
+                  - paragraph [ref=e1652]: 여수 돌산 더 호텔 수 조식 뷔페 가격은 얼마인가요?
+              - generic: 여수 돌산 더 호텔 수 조식 가격은 성인(14세 이상) 24,000원, 소인(7세~13세) 21,000원입니다. 36개월 미만 유아는 증빙서류 지참 시 무료로 이용 가능합니다.
+            - listitem [ref=e1656]:
+              - button "여수 돌산 더 호텔 수 루프탑 수영장은 무료로 이용할 수 있나요?" [ref=e1657] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 루프탑 수영장은 무료로 이용할 수 있나요?" [level=3] [ref=e1658]:
+                  - generic [ref=e1659]: Q
+                  - paragraph [ref=e1660]: 여수 돌산 더 호텔 수 루프탑 수영장은 무료로 이용할 수 있나요?
+              - generic: 네, 여수 돌산 더 호텔 수 투숙객은 루프탑 수영장을 무료로 이용할 수 있습니다. 운영 기간은 6월 20일부터 9월 27일까지이며, 이용 시간은 15:00부터 21:00까지입니다.
+            - listitem [ref=e1664]:
+              - button "여수 돌산 더 호텔 수에 반려동물과 함께 투숙할 수 있나요?" [ref=e1665] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수에 반려동물과 함께 투숙할 수 있나요?" [level=3] [ref=e1666]:
+                  - generic [ref=e1667]: Q
+                  - paragraph [ref=e1668]: 여수 돌산 더 호텔 수에 반려동물과 함께 투숙할 수 있나요?
+              - generic: 아니요, 여수 돌산 더 호텔 수는 반려동물 동반 입장이 금지되어 있습니다. 모든 투숙객의 편안한 휴식을 위해 양해 부탁드립니다.
+            - listitem [ref=e1672]:
+              - button "여수 돌산 더 호텔 수 루프탑 수영장 이용 시 꼭 알아야 할 점이 있나요?" [ref=e1673] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 루프탑 수영장 이용 시 꼭 알아야 할 점이 있나요?" [level=3] [ref=e1674]:
+                  - generic [ref=e1675]: Q
+                  - paragraph [ref=e1676]: 여수 돌산 더 호텔 수 루프탑 수영장 이용 시 꼭 알아야 할 점이 있나요?
+              - generic: 네, 여수 돌산 더 호텔 수 수영장은 수영복, 수영모, 아쿠아 슈즈를 반드시 착용해야 입장이 가능합니다. 또한, 기상 상황에 따라 운영이 변동될 수 있으니 방문 전 확인이 필요합니다.
+          - list [ref=e1681]:
+            - listitem [ref=e1682]:
+              - button "여수 돌산 더 호텔 수에서 주요 관광지까지 얼마나 걸리나요?" [ref=e1683] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수에서 주요 관광지까지 얼마나 걸리나요?" [level=3] [ref=e1684]:
+                  - generic [ref=e1685]: Q
+                  - paragraph [ref=e1686]: 여수 돌산 더 호텔 수에서 주요 관광지까지 얼마나 걸리나요?
+              - generic: 여수 돌산 더 호텔 수에서 돌산공원까지는 차량으로 약 3분, 여수엑스포역까지는 약 9분이 소요됩니다. 오동도는 차량으로 약 17분 거리에 위치해 있습니다.
+            - listitem [ref=e1690]:
+              - button "여수 돌산 더 호텔 수 객실에서 바다나 다리 전망을 볼 수 있나요?" [ref=e1691] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 객실에서 바다나 다리 전망을 볼 수 있나요?" [level=3] [ref=e1692]:
+                  - generic [ref=e1693]: Q
+                  - paragraph [ref=e1694]: 여수 돌산 더 호텔 수 객실에서 바다나 다리 전망을 볼 수 있나요?
+              - generic: 네, 여수 돌산 더 호텔 수에는 바다를 조망할 수 있는 오션뷰 객실과 다리 전망의 브릿지뷰 객실이 있습니다. 예약 시 원하시는 전망의 객실 타입을 선택할 수 있습니다.
+            - listitem [ref=e1698]:
+              - button "여수 돌산 더 호텔 수 주차는 무료로 가능한가요?" [ref=e1699] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 주차는 무료로 가능한가요?" [level=3] [ref=e1700]:
+                  - generic [ref=e1701]: Q
+                  - paragraph [ref=e1702]: 여수 돌산 더 호텔 수 주차는 무료로 가능한가요?
+              - generic: 네, 여수 돌산 더 호텔 수에서는 투숙객에게 무료 주차를 제공하고 있습니다. 별도의 주차 요금 없이 편리하게 이용하실 수 있습니다.
+            - listitem [ref=e1706]:
+              - button "여수 돌산 더 호텔 수 체크인과 체크아웃 시간은 어떻게 되나요?" [ref=e1707] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 체크인과 체크아웃 시간은 어떻게 되나요?" [level=3] [ref=e1708]:
+                  - generic [ref=e1709]: Q
+                  - paragraph [ref=e1710]: 여수 돌산 더 호텔 수 체크인과 체크아웃 시간은 어떻게 되나요?
+              - generic: 여수 돌산 더 호텔 수의 체크인은 오후 15:00부터이며, 체크아웃은 오전 11:00까지입니다. 현장 상황에 따라 체크인 시간이 지연될 수 있습니다.
+            - listitem [ref=e1714]:
+              - button "여수 돌산 더 호텔 수 객실에 기준 인원보다 인원을 추가할 수 있나요?" [ref=e1715] [cursor=pointer]:
+                - heading "Q 여수 돌산 더 호텔 수 객실에 기준 인원보다 인원을 추가할 수 있나요?" [level=3] [ref=e1716]:
+                  - generic [ref=e1717]: Q
+                  - paragraph [ref=e1718]: 여수 돌산 더 호텔 수 객실에 기준 인원보다 인원을 추가할 수 있나요?
+              - generic: 네, 여수 돌산 더 호텔 수에서는 기준 인원 외 인원 추가 시 1인당 20,000원의 추가 요금이 발생합니다. 침구 추가 시에는 1채당 20,000원이며, 최대 인원을 초과할 수는 없습니다.
+    - contentinfo [ref=e1722]:
+      - generic [ref=e1723]:
+        - generic [ref=e1724]:
+          - generic [ref=e1725]:
+            - heading "고객센터" [level=2] [ref=e1726]
+            - generic [ref=e1727]:
+              - heading "국내 숙소 / 해외 숙소 / 해외 투어" [level=3] [ref=e1728]
+              - generic [ref=e1729]:
+                - generic [ref=e1730]:
+                  - paragraph [ref=e1731]: "고객행복센터(전화): 오전 9시 ~ 새벽 3시 운영"
+                  - paragraph [ref=e1732]: "채팅 상담 문의: 24시간 운영"
+                - generic [ref=e1733]:
+                  - button "1670-6250" [ref=e1735] [cursor=pointer]
+                  - button "채팅 상담" [ref=e1741] [cursor=pointer]
+            - generic [ref=e1746]:
+              - heading "패키지 여행 / 항공" [level=3] [ref=e1747]
+              - generic [ref=e1748]:
+                - paragraph [ref=e1750]: "고객행복센터: 오전 9시 ~ 오후 6시 운영 (월~금, 공휴일 제외)"
+                - button "1670-0965" [ref=e1753] [cursor=pointer]
+          - generic [ref=e1758]:
+            - generic [ref=e1759]:
+              - heading "회사" [level=3] [ref=e1760]
+              - link "회사소개" [ref=e1762] [cursor=pointer]:
+                - /url: https://gccompany.co.kr
+            - generic [ref=e1764]:
+              - heading "서비스" [level=3] [ref=e1765]
+              - generic [ref=e1766]:
+                - link "공지사항" [ref=e1767] [cursor=pointer]:
+                  - /url: /notice
+                - link "자주 묻는 질문" [ref=e1769] [cursor=pointer]:
+                  - /url: /faq
+                - link "기업 출장/복지 서비스 문의" [ref=e1771] [cursor=pointer]:
+                  - /url: https://business.yeogi.com
+                - link "국내 여행매거진" [ref=e1773] [cursor=pointer]:
+                  - /url: /contents/domestic
+                - link "해외 여행매거진" [ref=e1775] [cursor=pointer]:
+                  - /url: /contents/oversea
+                - link "국내 인기 여행지" [ref=e1777] [cursor=pointer]:
+                  - /url: /domestic-accommodations/sitemap
+                - link "해외 인기 여행지" [ref=e1779] [cursor=pointer]:
+                  - /url: /overseas-accommodations/sitemap
+            - generic [ref=e1781]:
+              - heading "혜택" [level=3] [ref=e1782]
+              - generic [ref=e1783]:
+                - link "엘리트 멤버십" [ref=e1784] [cursor=pointer]:
+                  - /url: /benefit/elite
+                - link "트립홀릭 혜택 안내" [ref=e1786] [cursor=pointer]:
+                  - /url: /benefit/trip-holic
+                - link "여기어때 상품권 조회" [ref=e1788] [cursor=pointer]:
+                  - /url: http://q.egiftcard.kr/couponstatus/auth
+            - generic [ref=e1790]:
+              - heading "모든 여행" [level=3] [ref=e1791]
+              - generic [ref=e1792]:
+                - link "국내숙소" [ref=e1793] [cursor=pointer]:
+                  - /url: /
+                - link "해외숙소" [ref=e1795] [cursor=pointer]:
+                  - /url: /accommodation-overseas
+                - link "항공" [ref=e1797] [cursor=pointer]:
+                  - /url: /flight
+                - link "해외 투어" [ref=e1799] [cursor=pointer]:
+                  - /url: /experience
+                - link "패키지 여행" [ref=e1801] [cursor=pointer]:
+                  - /url: /package
+                - link "항공+숙소" [ref=e1803] [cursor=pointer]:
+                  - /url: /air-hotel
+                - link "레저·티켓" [ref=e1805] [cursor=pointer]:
+                  - /url: /leisure-ticket
+                - link "렌터카" [ref=e1807] [cursor=pointer]:
+                  - /url: /car-rental
+                - link "공간대여" [ref=e1809] [cursor=pointer]:
+                  - /url: /space-rental
+        - generic [ref=e1811]:
+          - generic [ref=e1812]:
+            - generic [ref=e1813]:
+              - paragraph [ref=e1814]: (주)여기어때컴퍼니
+              - paragraph [ref=e1815]:
+                - text: "주소 : 서울특별시 강남구 봉은사로 479, 479타워 11층 | 대표이사 : 정명훈 | 사업자등록번호 : 742-86-00224"
+                - link "사업자정보확인" [ref=e1816] [cursor=pointer]:
+                  - /url: https://www.ftc.go.kr/bizCommPop.do?wrkr_no=7428600224&apv_perm_no=
+              - paragraph [ref=e1817]: "전자우편주소 : help@yeogi.com | 통신판매번호 : 2017-서울강남-01779 | 관광사업자 등록번호 : 제2017-39호 | 전화번호 : 1670-6250 | 호스팅서비스제공자의 상호 표시 : (주)여기어때컴퍼니"
+              - paragraph [ref=e1818]: 여기어때 서비스 내에는 (주)여기어때컴퍼니가 판매하는 상품과 여기어때 서비스에 입점한 개별 판매자가 판매하는 상품이 있습니다. 개별 판매자가 판매하는 상품의 경우, (주)여기어때컴퍼니는 통신판매중개자이므로 상품의 예약, 이용 및 환불 등과 관련한 의무와 책임은 각 판매자에게 있습니다.
+              - paragraph [ref=e1819]: 플랫폼 내의 정보, 리뷰, UI 등의 콘텐츠 일체에 대한 무단 복제, 배포, 전송 또는 스크래핑 등의 행위는 엄격히 금지됩니다.
+            - generic [ref=e1820]:
+              - generic [ref=e1821]:
+                - generic [ref=e1822]:
+                  - link "이용약관" [ref=e1823] [cursor=pointer]:
+                    - /url: /policy/terms#TERMS
+                  - link "개인정보처리방침" [ref=e1825] [cursor=pointer]:
+                    - /url: /policy/terms#PRIVACY_POLICY
+                - link "소비자 분쟁해결 기준" [ref=e1827] [cursor=pointer]:
+                  - /url: /policy/terms#CONSUMER_DISPUTE_RESOLUTION_STANDARD
+                - link "콘텐츠산업진흥법에 의한 표시" [ref=e1829] [cursor=pointer]:
+                  - /url: /policy/terms#CONTENT_INDUSTRY_PROMOTION_ACT
+              - generic [ref=e1831]:
+                - img [ref=e1832] [cursor=pointer]
+                - img [ref=e1834] [cursor=pointer]
+          - paragraph [ref=e1838]: Copyright GC COMPANY Corp. All rights reserved.
+  - alert [ref=e1839]
