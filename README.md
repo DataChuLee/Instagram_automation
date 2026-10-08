@@ -1,4 +1,31 @@
-# 숙소 세로 영상
+# 숙소 세로 영상 · Stay Studio
+
+사진을 넣어 대본·음성·움직임·자막을 만드는 로컬 Windows 프로그램은 `studio/`에 있습니다.
+사진 첨부와 함께 여기어때 국내 숙소 링크에서 사진을 수집하고 골라 추가할 수 있습니다.
+완성본 MP4, 자막·음성 없는 MP4, 대본 TXT/자막 SRT, 내레이션 MP3를 각각 저장합니다.
+친구에게 전달할 폴더는 `dist/StayStudio`, 압축 파일은 `dist/StayStudio-Windows.zip`입니다.
+실행 및 로그인 방법은 [친구 PC 사용법](docs/친구-PC-사용법.md)을 보세요.
+
+개발 실행 및 검증:
+
+```powershell
+python -m pip install --target .tools/studio-python -r requirements-studio.txt
+python scripts/install_browser.py
+python launch.py
+python scripts/test_studio.py
+python scripts/build_windows.py
+```
+
+새 프로그램은 기존 결과물을 덮어쓰지 않습니다. 개발 중 작업은 `.local/jobs`에 저장합니다.
+링크 수집 결과는 `.local/collections`에 보관합니다. 같은 링크를 다시 수집하면 정상 저장된 사진을 재사용합니다.
+사진 구성은 분석 전에만 변경하며, 기존 작업의 새 다운로드 파일은 저장된 미디어로 다시 합성해 만듭니다.
+최종 출력은 1080×1920 / 30fps, 자막은 페이퍼로지 Bold와 Y=13 기본값입니다.
+움직임은 Fish MCP 패키지 크레딧, Drama3 음성은 Fish 공식 웹 화면으로 생성합니다.
+사전 가격 승인과 계정 로그인이 필요합니다. 웹 화면에서 모델·목소리·가격을
+확인하지 못하면 유료 생성을 중단합니다. 실제 계정 생성 검증 상태는
+[진행 기록](docs/superpowers/plans/2026-10-08-local-video-studio-progress.md)에 남깁니다.
+
+## 기존 17장 영상
 
 이번 결과물: `output/stay_reel.mp4`. Fish Audio의 일반여성2 목소리와 `Data/Test_Data` 사진 17장을 사용한다. 내레이션·흰색 중앙 자막·사진 확대 효과를 포함한다.
 
