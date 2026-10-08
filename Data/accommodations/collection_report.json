@@ -1,0 +1,16 @@
+{
+  "started_at": "2026-10-08T11:35:04.929056+00:00",
+  "results": [
+    {
+      "accommodation_id": "9816",
+      "source_url": "https://www.yeogi.com/domestic-accommodations/9816",
+      "status": "complete",
+      "photo_urls": 66,
+      "unique_files": 56,
+      "failures": 0,
+      "reused_urls": 55,
+      "manifest": "C:\\Users\\qasd1\\Desktop\\insta\\Data\\accommodations\\9816\\manifest.json"
+    }
+  ],
+  "completed_at": "2026-10-08T11:35:34.433672+00:00"
+}
