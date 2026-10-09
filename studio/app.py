@@ -16,11 +16,11 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import codex, collector, store
+from . import assets, codex, collector, composition, recommendation, store
 from .drama import Drama
 from .fish import Fish
 from .media import preview_image
-from .models import ApproveRequest, CaptionStyle, CreateOptions, Job, Storyboard
+from .models import ApproveRequest, CaptionStyle, CreateOptions, CropFocus, Job, Storyboard
 from .paths import DATA, RESOURCES, initialize, job_path
 from .pipeline import Pipeline
 
@@ -184,7 +184,7 @@ async def jobs():
 
 @app.post('/api/jobs')
 async def upload(files: list[UploadFile] = File(...)):
-    return add_photos(Job(id=uuid.uuid4().hex), await read_uploads(files)).model_dump()
+    return add_photos(Job(id=uuid.uuid4().hex, workflow_version=2), await read_uploads(files)).model_dump()
 
 
 async def read_uploads(files):
@@ -242,7 +242,11 @@ def add_photos(job, inputs, source_metadata=None):
             raise ValueError('추가할 사진을 선택해 주세요.')
         for photo in added:
             (staging / photo['file']).replace(folder / photo['file'])
+    previous_count = len(job.photos)
     job.photos.extend(added)
+    if job.workflow_version >= 2:
+        job.photo_order = (job.photo_order or list(range(previous_count))) + list(range(previous_count, len(job.photos)))
+        job.candidates = recommendation.candidates(job)
     if source_metadata and not any(s['url'] == source_metadata['url'] for s in job.sources):
         job.sources.append(source_metadata)
     job.state, job.error = 'uploaded', None
@@ -312,7 +316,9 @@ async def import_collection(value: dict):
 @app.get('/api/jobs/{job_id}')
 async def status(job_id: str):
     job = store.read(job_id)
-    return job.model_dump() | {'available_exports': [name for name in
+    return job.model_dump() | {'preview_stale': bool(job.preview and job.preview.get('revision') != assets.render_revision(job)),
+        'media_ready': assets.ready(job, job_path(job.id)), 'pending_media': assets.pending(job),
+        'available_exports': [name for name in
         ('stay-reel.mp4', 'stay-video.mp4', 'stay-script.txt', 'stay-reel.srt', 'stay-voice.mp3')
         if (job_path(job_id) / name).is_file()]}
 
@@ -333,6 +339,8 @@ async def style(job_id: str, options: CreateOptions):
     if pipeline.busy(job_id):
         raise ValueError('작업이 끝난 뒤 자막 설정을 변경해 주세요.')
     job = store.read(job_id)
+    if job.workflow_version >= 2 and (job.options.caption != options.caption or job.options.speed != options.speed):
+        job.result = None
     job.options.caption = options.caption
     job.options.speed = options.speed
     store.save(job)
@@ -342,6 +350,16 @@ async def style(job_id: str, options: CreateOptions):
 @app.post('/api/jobs/{job_id}/storyboard')
 async def edit_storyboard(job_id: str, value: dict):
     job = store.read(job_id)
+    if job.workflow_version >= 2:
+        editable(job)
+        plan = Storyboard.validate_plan(value, len(job.photos), len(job.photos), job.photo_order or list(range(len(job.photos))))
+        assets.capture(job)
+        assets.checkpoint(job)
+        job.storyboard = plan
+        assets.restore(job)
+        assets.invalidate(job)
+        store.save(job)
+        return job.model_dump()
     if pipeline.busy(job_id) or job.narration or any(v.get('generation_id') or v.get('idempotency_key') for v in job.generated.values()):
         raise ValueError('생성 전에만 대본·움직임을 바꿀 수 있습니다. 새 작업을 만들어 주세요.')
     job.storyboard = Storyboard.validate_plan(value, len(job.photos), len(job.photos))
@@ -386,15 +404,180 @@ async def rerender(job_id: str):
     return {'ok': True}
 
 
+def editable(job):
+    if pipeline.busy(job.id) or assets.pending(job):
+        raise ValueError('생성 작업을 완료하거나 제출 결과를 복구한 뒤 수정해 주세요.')
+
+
+@app.post('/api/composition')
+async def configure_composition(value: dict):
+    job = store.read(value['job_id']) if value.get('job_id') else Job(id=uuid.uuid4().hex, workflow_version=2)
+    editable(job)
+    mode = value.get('mode', 'manual')
+    if mode not in {'manual', 'ai'}:
+        raise ValueError('구성 방식이 올바르지 않습니다.')
+    target = value.get('target_count', 10)
+    if type(target) is not int or not 1 <= target <= 60:
+        raise ValueError('추천 장수는 1~60장입니다.')
+    job.candidates = recommendation.candidates(job, value.get('collection_id'))
+    job.target_count = target
+    job.composition_mode = mode
+    job.workflow_version = 2
+    if value.get('collection_id'):
+        gallery = collector.gallery(value['collection_id'])
+        if not any(s.get('collection_id') == gallery['id'] for s in job.sources):
+            job.sources.append({'name': gallery['name'], 'url': gallery['source_url'], 'collection_id': gallery['id']})
+    if mode == 'manual':
+        if 'order' in value:
+            composition.reorder(job, value['order'])
+        else:
+            composition.select(job, value.get('photos'))
+    store.save(job)
+    if mode == 'ai':
+        pipeline.launch(job.id, pipeline.recommend)
+    return job.model_dump()
+
+
+@app.post('/api/jobs/{job_id}/candidates')
+async def append_candidates(job_id: str, files: list[UploadFile] = File(...)):
+    inputs = await read_uploads(files)
+    job = store.read(job_id)
+    editable(job)
+    folder = job_path(job.id)
+    pool = {p['id']: p for p in recommendation.candidates(job)}
+    staged = []
+    with tempfile.TemporaryDirectory(prefix='.candidates-', dir=folder) as temporary:
+        for data, metadata in inputs:
+            digest = hashlib.sha256(data).hexdigest()
+            if digest in pool:
+                continue
+            try:
+                with Image.open(io.BytesIO(data)) as original:
+                    if original.format not in {'JPEG', 'PNG', 'WEBP'}:
+                        raise ValueError('JPG, PNG, WebP 사진을 넣어 주세요.')
+                    image = ImageOps.exif_transpose(original).convert('RGB')
+                    if min(image.size) < 300:
+                        raise ValueError('사진의 짧은 변은 300px 이상이어야 합니다.')
+                    name = f'candidate-{digest}.jpg'
+                    image.save(Path(temporary) / name, quality=97)
+            except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
+                raise ValueError('읽을 수 없는 사진 파일이 있습니다.') from error
+            candidate = dict(metadata, id=digest, sha256=digest, file=name, bytes=len(data), width=image.width, height=image.height)
+            pool[digest] = candidate
+            staged.append(name)
+        for name in staged:
+            (Path(temporary) / name).replace(folder / name)
+    job.candidates = list(pool.values())
+    if not job.storyboard and not job.generated and not job.narration:
+        old_count = len(job.photos)
+        active_ids = {p['sha256'] for p in job.photos}
+        total = sum(p.get('bytes', 0) for p in job.photos)
+        for candidate in job.candidates:
+            if candidate['id'] not in active_ids and len(job.photos) < 60 and total + candidate.get('bytes', 0) <= 300 * 1024**2:
+                job.photos.append(dict(candidate))
+                active_ids.add(candidate['id'])
+                total += candidate.get('bytes', 0)
+        job.photo_order = (job.photo_order or list(range(old_count))) + list(range(old_count, len(job.photos)))
+    job.message = f'후보 {len(job.candidates)}장 · 현재 구성 {len(job.photos)}장을 준비했습니다.'
+    store.save(job)
+    return job.model_dump()
+
+
+@app.post('/api/jobs/{job_id}/preview-video')
+async def preview_video(job_id: str):
+    pipeline.launch(job_id, pipeline.preview)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/media-attempt')
+async def media_attempt(job_id: str, value: dict):
+    job = store.read(job_id)
+    editable(job)
+    if not job.storyboard:
+        raise ValueError('대본을 먼저 작성해 주세요.')
+    kind, index = value.get('kind'), value.get('index')
+    if type(index) is not int:
+        raise ValueError('장면 또는 사진 번호를 확인해 주세요.')
+    if kind == 'voice' and 0 <= index < len(job.storyboard.scenes):
+        key = assets.voice_key(job, job.storyboard.scenes[index])
+    elif kind == 'motion' and any(m.photo == index for m in job.storyboard.motion):
+        key = assets.motion_key(job, next(m for m in job.storyboard.motion if m.photo == index))
+    else:
+        raise ValueError('복원 또는 재생성할 미디어가 없습니다.')
+    assets.capture(job)
+    assets.checkpoint(job)
+    if value.get('restore') is not None:
+        attempt = value['restore']
+        if type(attempt) is not int or f'{key}:{attempt}' not in job.assets or not job.assets[f'{key}:{attempt}'].get('file'):
+            raise ValueError('이전 생성 결과를 찾지 못했습니다.')
+        job.attempts[key] = attempt
+    else:
+        job.attempts[key] = max([int(k.rsplit(':', 1)[1]) for k in job.assets if k.startswith(key + ':')] + [job.attempts.get(key, 0)]) + 1
+    assets.restore(job)
+    assets.invalidate(job)
+    store.save(job)
+    return job.model_dump()
+
+
+@app.get('/api/jobs/{job_id}/media/{asset_id}')
+async def media_history(job_id: str, asset_id: str):
+    from .models import stable_hash
+    job = store.read(job_id)
+    record = next((r for k, r in job.assets.items() if stable_hash(k) == asset_id), None)
+    if not record or not record.get('file') or Path(record['file']).name != record['file']:
+        raise HTTPException(404)
+    path = job_path(job.id) / record['file']
+    if not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path)
+
+
+@app.post('/api/jobs/{job_id}/versions/{version}')
+async def restore_version(job_id: str, version: int):
+    job = store.read(job_id)
+    editable(job)
+    if not 0 <= version < len(job.versions):
+        raise ValueError('저장된 이전 구성이 없습니다.')
+    snapshot = dict(job.versions[version])
+    assets.capture(job)
+    assets.checkpoint(job)
+    job.photos = snapshot['photos']
+    job.photo_order = snapshot['photo_order']
+    job.storyboard = Storyboard.model_validate(snapshot['storyboard'])
+    job.attempts = snapshot['attempts']
+    job.composition_mode = snapshot['mode']
+    assets.restore(job)
+    assets.invalidate(job)
+    store.save(job)
+    return job.model_dump()
+
+
 @app.post('/api/jobs/{job_id}/recover-voice/{scene}')
 async def recover_voice(job_id: str, scene: int, file: UploadFile = File(...)):
+    if pipeline.busy(job_id):
+        raise ValueError('작업이 실행 중입니다.')
+    reservation = asyncio.current_task()
+    pipeline.tasks[job_id] = reservation
+    try:
+        return await recover_voice_asset(job_id, scene, file)
+    finally:
+        if pipeline.tasks.get(job_id) is reservation:
+            pipeline.tasks.pop(job_id, None)
+
+
+async def recover_voice_asset(job_id, scene, file):
     job = store.read(job_id)
-    if pipeline.busy(job_id) or not job.storyboard or not 0 <= scene < len(job.storyboard.scenes):
+    if not job.storyboard or not 0 <= scene < len(job.storyboard.scenes):
         raise ValueError('복구할 수 없는 장면입니다.')
     data = await file.read(20 * 1024 * 1024 + 1)
     if len(data) > 20 * 1024 * 1024:
         raise ValueError('음성 파일은 20MB 이하로 넣어 주세요.')
-    name = f'voice-{scene:03}.mp3'
+    assets.capture(job)
+    assets.checkpoint(job)
+    key = assets.voice_key(job, job.storyboard.scenes[scene])
+    if job.narration.get(str(scene), {}).get('file'):
+        job.attempts[key] = max([int(k.rsplit(':', 1)[1]) for k in job.assets if k.startswith(key + ':')] + [job.attempts.get(key, 0)]) + 1
+    name = f'voice-recovered-{uuid.uuid4().hex}.mp3' if job.workflow_version >= 2 else f'voice-{scene:03}.mp3'
     path = job_path(job_id) / name
     pending = path.with_name(f'voice-{scene:03}.pending.mp3')
     pending.write_bytes(data)
@@ -405,7 +588,11 @@ async def recover_voice(job_id: str, scene: int, file: UploadFile = File(...)):
         pending.unlink(missing_ok=True)
         raise ValueError('읽을 수 없는 음성 파일입니다.')
     pending.replace(path)
-    job.narration[str(scene)] = {'file': name, 'state': 'completed', 'recovered_by_user': True}
+    job.narration[str(scene)] = {'file': name, 'state': 'completed', 'recovered_by_user': True,
+                                'asset_key': assets.cache_key(job, assets.voice_key(job, job.storyboard.scenes[scene])),
+                                'text': job.storyboard.scenes[scene].text}
+    assets.capture(job)
+    assets.invalidate(job)
     store.save(job)
     return {'ok': True}
 
@@ -420,6 +607,9 @@ async def preview(job_id: str, value: dict):
     text = value.get('text', '이런 숙소, 어때요?')[:160]
     focus = next(((item.x, item.y) for item in job.storyboard.crop_focus if item.photo == index),
                  (0.5, 0.5)) if job.storyboard else (0.5, 0.5)
+    if 'focus' in value:
+        crop = CropFocus.model_validate(dict(value['focus'], photo=index))
+        focus = (crop.x, crop.y)
     image = await asyncio.to_thread(preview_image, job_path(job_id) / job.photos[index]['file'], text, caption, focus)
     data = io.BytesIO()
     image.save(data, format='JPEG', quality=95)
@@ -431,7 +621,11 @@ async def files(job_id: str, name: str):
     job = store.read(job_id)
     allowed = {p['file'] for p in job.photos} | {'stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3',
                                                'stay-script.txt', 'stay-reel.srt', 'preview.jpg', 'verification.json'}
-    if name not in allowed:
+    allowed |= {p['file'] for p in job.candidates if p.get('file') and not p.get('collection_id')}
+    if job.preview:
+        allowed |= {job.preview[k] for k in ('file', 'video', 'audio', 'script', 'srt', 'verification') if k in job.preview}
+    allowed |= {r['file'] for r in job.assets.values() if r.get('file', '').endswith('.mp4')}
+    if Path(name).name != name or name not in allowed:
         raise HTTPException(404)
     path = job_path(job_id) / name
     if not path.is_file():

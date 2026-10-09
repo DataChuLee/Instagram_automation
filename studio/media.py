@@ -71,6 +71,12 @@ def caption_image(text: str, style: CaptionStyle | None = None) -> Image.Image:
     return layer
 
 
+def caption_segments(text: str, style: CaptionStyle) -> list[str]:
+    font = ImageFont.truetype(str(font_path()), style.font_size)
+    lines = wrap_caption(text, font, outline=style.outline).splitlines()
+    return ['\n'.join(lines[i:i + 2]) for i in range(0, len(lines), 2)] or ['']
+
+
 def preview_image(photo: Path, text: str, style: CaptionStyle, focus=(0.5, 0.5)):
     image = crop_photo(photo, *focus).convert('RGBA')
     image.alpha_composite(caption_image(text, style))

@@ -102,13 +102,22 @@ try:
     saved = json.loads((job_root / 'job.json').read_text(encoding='utf-8'))
     saved['narration'] = {'0': {'file': 'fixture.wav', 'source': 'local smoke-test fixture'}}
     (job_root / 'job.json').write_text(json.dumps(saved, ensure_ascii=False), encoding='utf-8')
-    api(f"/api/jobs/{job['id']}/render", {})
+    assert (folder/'_internal/studio/skills/stay-shortform/SKILL.md').is_file()
+    api(f"/api/jobs/{job['id']}/preview-video", {})
     for _ in range(120):
         job = api('/api/jobs/' + job['id'])
-        if job['state'] not in {'uploaded', 'rendering'}:
+        if job['state'] not in {'uploaded', 'previewing'}:
             break
         time.sleep(0.5)
+    assert job['state'] == 'preview_ready', job.get('error')
+    before = (job_root/job['preview']['file']).read_bytes()
+    api(f"/api/jobs/{job['id']}/render", {})
+    for _ in range(40):
+        job = api('/api/jobs/' + job['id'])
+        if job['state'] == 'complete': break
+        time.sleep(0.25)
     assert job['state'] == 'complete', job.get('error')
+    assert before == (job_root/'stay-reel.mp4').read_bytes()
     for name in ['stay-reel.mp4', 'stay-video.mp4', 'stay-script.txt', 'stay-reel.srt', 'stay-voice.mp3']:
         with urllib.request.urlopen(f"{base}/api/jobs/{job['id']}/files/{name}") as response:
             assert 'attachment' in response.headers['Content-Disposition']

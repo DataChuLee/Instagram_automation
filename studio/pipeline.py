@@ -4,11 +4,11 @@ import asyncio
 import hashlib
 import uuid
 
-from . import codex, store
+from . import assets, codex, composition, recommendation, store
 from .media import crop_photo
 from .models import MOTION_PARAMETERS, VIDEO_MODEL, motion_fingerprint, stable_hash
 from .paths import job_path
-from .render import render, video_size
+from .render import publish_preview, render, video_size
 
 
 class Pipeline:
@@ -40,11 +40,33 @@ class Pipeline:
 
     async def analyze(self, job_id):
         job = store.read(job_id)
-        if job.generated or job.narration:
+        if assets.pending(job):
+            raise ValueError('제출한 생성 작업을 먼저 완료하거나 복구해 주세요.')
+        if job.workflow_version < 2 and (job.generated or job.narration):
             raise ValueError('생성 결과가 있는 작업은 대본을 다시 분석할 수 없습니다. 새 작업을 만들어 주세요.')
         self.update(job, 'analyzing', 'Codex가 사진을 보고 대본과 움직임 장면을 고르고 있습니다.')
+        assets.capture(job)
+        assets.checkpoint(job)
         job.storyboard = await codex.analyze(job)
+        assets.restore(job)
+        assets.invalidate(job)
         self.update(job, 'uploaded', '대본을 준비했습니다. 자막을 조절하고 크레딧 견적을 확인해 주세요.')
+
+    async def recommend(self, job_id):
+        job = store.read(job_id)
+        self.update(job, 'recommending', '전체 후보 사진을 평가하고 숙소 소개 구성을 추천합니다.')
+        working = job.model_copy(deep=True)
+        def progress(message):
+            job.message = message
+            store.save(job)
+        selection = await recommendation.choose(working, progress)
+        composition.select(working, selection['ids'])
+        working.composition_mode = 'ai'
+        working.storyboard = await codex.analyze(working)
+        reasons = {r['id']: r['reason'] for r in selection['reasons']}
+        working.storyboard.selection_reasons = {str(i): reasons.get(p['id'], '') for i, p in enumerate(working.photos)}
+        assets.restore(working)
+        self.update(working, 'uploaded', 'AI 추천 구성을 준비했습니다. 선정 이유와 대본을 확인해 주세요.')
 
     async def quote(self, job_id, workspace):
         job = store.read(job_id)
@@ -53,10 +75,14 @@ class Pipeline:
         self.update(job, 'quoting', '움직임과 Drama3 음성의 실제 크레딧 견적을 확인하고 있습니다.')
         job.approval = None
         store.save(job)
-        model = await self.fish.call('get_media_model', {'model_id': VIDEO_MODEL})
-        schema = model['capabilities']['i2v']['parameter_schema']['properties']
-        if '1080p' not in schema['resolution']['enum'] or '9:16' not in schema['aspect_ratio']['enum']:
-            raise RuntimeError('현재 Fish 모델이 1080p / 9:16 생성을 지원하지 않습니다.')
+        if job.workflow_version >= 2:
+            assets.capture(job)
+            assets.restore(job)
+        if job.storyboard.motion:
+            model = await self.fish.call('get_media_model', {'model_id': VIDEO_MODEL})
+            schema = model['capabilities']['i2v']['parameter_schema']['properties']
+            if '1080p' not in schema['resolution']['enum'] or '9:16' not in schema['aspect_ratio']['enum']:
+                raise RuntimeError('현재 Fish 모델이 1080p / 9:16 생성을 지원하지 않습니다.')
         folder = job_path(job.id)
         focus = {item.photo: (item.x, item.y) for item in job.storyboard.crop_focus}
         videos, voices = [], []
@@ -74,6 +100,8 @@ class Pipeline:
             fingerprint = motion_fingerprint(hashlib.sha256(image.read_bytes()).hexdigest(), motion.prompt)
             if saved.get('fingerprint') != fingerprint or saved.get('workspace') != workspace:
                 saved = {'fingerprint': fingerprint, 'workspace': workspace,
+                         'asset_key': assets.cache_key(job, assets.motion_key(job, motion)),
+                         'photo_sha': job.photos[motion.photo]['sha256'], 'prompt': motion.prompt,
                          'object_key': await self.fish.upload(image, workspace)}
                 job.generated[index] = saved
                 store.save(job)
@@ -94,7 +122,9 @@ class Pipeline:
             if saved.get('url'):
                 continue
             credits = await self.drama.quote(scene.text)
-            voices.append({'scene': scene_index, 'text': scene.text, 'credits': credits})
+            voices.append({'scene': scene_index, 'text': scene.text, 'credits': credits,
+                           'asset_key': assets.cache_key(job, assets.voice_key(job, scene))})
+        assets.capture(job)
         total = sum(item['credits'] for item in videos + voices)
         balances = [item['balance'] for item in videos if item.get('balance') is not None]
         if balances and total > min(balances):
@@ -113,7 +143,7 @@ class Pipeline:
             saved = job.generated[key]
             if saved.get('generation_id') or saved.get('file'):
                 continue
-            idempotency = saved.setdefault('idempotency_key', stable_hash({'job': job.id, 'asset': saved['fingerprint']}))
+            idempotency = saved.setdefault('idempotency_key', stable_hash({'job': job.id, 'asset': saved.get('asset_key', saved['fingerprint'])}))
             saved['state'] = 'submitting'
             store.save(job)
             value = await self.fish.call('generate_video', {**item['request'],
@@ -136,6 +166,9 @@ class Pipeline:
                 value = await self.fish.call('get_generation_status', {'generation_id': generation_id})
                 status = value.get('status')
                 if status in {'failed', 'cancelled'}:
+                    saved['state'] = status
+                    assets.capture(job)
+                    store.save(job)
                     raise RuntimeError('Fish 움직임 생성이 실패했습니다. 저장된 ID: ' + generation_id)
                 if status in {'completed', 'succeeded', 'finished'}:
                     result = await self.fish.call('get_generation_result', {'generation_id': generation_id})
@@ -146,7 +179,7 @@ class Pipeline:
                         raise RuntimeError('완료된 Fish 결과의 다운로드 주소를 찾지 못했습니다.')
                     saved.update(url=url, state='completed')
                     store.save(job)
-                    output = folder / f'motion-{motion.photo:03}.mp4'
+                    output = folder / (f"motion-{stable_hash(saved['asset_key'])}.mp4" if job.workflow_version >= 2 else f'motion-{motion.photo:03}.mp4')
                     await self.fish.download(url, output)
                     if await asyncio.to_thread(video_size, output) != (1080, 1920):
                         raise RuntimeError('Fish 결과가 1080×1920이 아닙니다. 이 결과를 고화질로 표시하지 않습니다.')
@@ -161,7 +194,13 @@ class Pipeline:
             saved = job.narration.setdefault(key, {})
             if saved.get('file') and (folder / saved['file']).exists():
                 continue
-            output = folder / f'voice-{scene_index:03}.mp3'
+            asset_key = assets.cache_key(job, assets.voice_key(job, scene))
+            if job.workflow_version >= 2 and job.assets.get(asset_key, {}).get('file'):
+                job.narration[key] = dict(job.assets[asset_key])
+                continue
+            saved['asset_key'] = asset_key
+            saved['text'] = scene.text
+            output = folder / (f'voice-{stable_hash(asset_key)}.mp3' if job.workflow_version >= 2 else f'voice-{scene_index:03}.mp3')
             if saved.get('url'):
                 await self.fish.download(saved['url'], output)
             elif saved.get('state') == 'submitted':
@@ -173,11 +212,38 @@ class Pipeline:
                     store.save(job)
                 await self.drama.generate(scene.text, item['credits'], output, submitted)
             saved['file'] = output.name
+            assets.capture(job)
             store.save(job)
-        await self.render(job_id)
+        assets.capture(job)
+        store.save(job)
+        if job.workflow_version >= 2:
+            await self.preview(job_id)
+        else:
+            await self.render(job_id)
+
+    async def preview(self, job_id):
+        job = store.read(job_id)
+        if not assets.ready(job, job_path(job.id)):
+            raise ValueError('미리보기에 필요한 음성·움직임을 먼저 생성해 주세요.')
+        revision = assets.render_revision(job)
+        self.update(job, 'previewing', '음성·움직임·자막을 1080p 미리보기로 합성하고 있습니다.')
+        def progress(message):
+            job.message = message
+            store.save(job)
+        if not job.preview or job.preview.get('revision') != revision or not (job_path(job.id) / job.preview['file']).is_file():
+            job.preview = await asyncio.to_thread(render, job, progress, True)
+            job.preview['revision'] = revision
+        self.update(job, 'preview_ready', '1080p 미리보기를 확인한 뒤 최종 영상을 내보내세요.')
 
     async def render(self, job_id):
         job = store.read(job_id)
+        if job.workflow_version >= 2:
+            if not job.preview or job.preview.get('revision') != assets.render_revision(job):
+                raise ValueError('변경 내용을 반영한 미리보기를 먼저 만들어 주세요.')
+            self.update(job, 'rendering', '확인한 미리보기를 최종 파일로 내보내고 있습니다.')
+            job.result = await asyncio.to_thread(publish_preview, job)
+            self.update(job, 'complete', '확인한 1080×1920 미리보기를 최종 영상으로 내보냈습니다.')
+            return
         self.update(job, 'rendering', '저장된 영상과 음성을 합성하고 있습니다. 추가 크레딧을 사용하지 않습니다.')
         def progress(message):
             job.message = message

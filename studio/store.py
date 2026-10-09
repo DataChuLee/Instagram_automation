@@ -45,7 +45,7 @@ def list_jobs():
 
 def recover():
     for job in list_jobs():
-        if job.state in {'analyzing', 'quoting', 'generating', 'rendering'}:
+        if job.state in {'analyzing', 'recommending', 'quoting', 'generating', 'rendering', 'previewing'}:
             job.state = 'interrupted'
             job.message = '중단된 작업입니다. 저장된 생성 결과로 이어서 진행할 수 있습니다.'
             save(job)
@@ -66,7 +66,8 @@ def approve(job: Job, quote_id: str, credits: int):
 
 def plan_hash(job):
     return stable_hash({'photos': [p['sha256'] for p in job.photos],
-                        'storyboard': job.storyboard.model_dump() if job.storyboard else None})
+                        'storyboard': job.storyboard.model_dump() if job.storyboard else None,
+                        'attempts': job.attempts})
 
 
 def generation_allowed(job):

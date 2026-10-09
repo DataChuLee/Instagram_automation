@@ -195,7 +195,7 @@ try:
         job_file.write_text(json.dumps(record), encoding='utf-8')
         page.locator('#history button').first.click()
         page.wait_for_function("document.querySelector('#motionGrid input').disabled")
-        assert page.locator('#storyboard textarea').is_disabled()
+        assert all(item.is_disabled() for item in page.locator('#storyboard textarea').all())
         assert not errors, errors
         print('Numeric sync/validation/persistence; photos 2+3 prompts; quote/approval locks; all 10 photos selected; submitted lock; mobile passed')
         browser.close()

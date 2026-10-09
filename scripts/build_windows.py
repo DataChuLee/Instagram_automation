@@ -37,6 +37,7 @@ environment['PYTHONPATH'] = str(ROOT / '.tools/studio-python')
 args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--onedir', '--name', 'StayStudio',
         '--paths', str(ROOT / '.tools/studio-python'), '--add-data', f'{ROOT / "studio/web"};studio/web',
         '--add-data', f'{ROOT / "assets/fonts"};assets/fonts',
+        '--add-data', f'{ROOT / "studio/skills"};studio/skills',
         '--add-data', f'{ROOT / "build-resources/tools"};tools',
         '--add-data', f'{ROOT / "build-resources/versions.json"};.',
         '--collect-all', 'playwright', '--collect-all', 'mcp', '--collect-all', 'httpx2',

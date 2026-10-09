@@ -10,10 +10,54 @@ from unittest.mock import patch
 from PIL import Image
 
 from studio.models import Job, Storyboard
-from studio.render import ffmpeg, render, run
+from studio.render import ffmpeg, render, run, publish_preview
 
 
 class ExportTests(unittest.TestCase):
+    def test_short_motion_holds_last_frame_instead_of_looping(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder=Path(directory)
+            run('-f','lavfi','-i','color=c=red:s=1080x1920:r=30:d=0.1',
+                '-f','lavfi','-i','color=c=blue:s=1080x1920:r=30:d=0.1',
+                '-filter_complex','[0:v][1:v]concat=n=2:v=1:a=0[v]','-map','[v]',
+                '-c:v','libx264','-pix_fmt','yuv420p',folder/'motion.mp4')
+            with wave.open(str(folder/'voice.wav'),'wb') as audio:
+                audio.setparams((1,2,48000,0,'NONE','not compressed'))
+                audio.writeframes(b'\0\0'*48000)
+            job=Job(id='f'*32,photos=[{'sha256':'one'}],
+                storyboard=Storyboard(scenes=[{'photos':[0],'text':'객실'}],motion=[{'photo':0,'prompt':'Subtle movement'}]),
+                generated={'0':{'file':'motion.mp4'}},narration={'0':{'file':'voice.wav'}})
+            with patch('studio.render.job_path',return_value=folder):result=render(job)
+            run('-ss','0.82','-i',folder/result['video'],'-frames:v','1',folder/'late.png')
+            with Image.open(folder/'late.png') as image:
+                red,green,blue=image.convert('RGB').getpixel((500,1000))
+            self.assertGreater(blue,200)
+            self.assertLess(red,40)
+
+    def test_preview_exports_identical_bytes_and_long_caption_segments_have_two_lines(self):
+        from studio.assets import render_revision
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            Image.new('RGB', (360, 640), '#228844').save(folder / 'photo.jpg')
+            with wave.open(str(folder / 'voice.wav'), 'wb') as audio:
+                audio.setparams((1, 2, 48000, 0, 'NONE', 'not compressed'))
+                audio.writeframes(b'\0\0' * 48000)
+            caption = '초록빛 정원에서 쉬어가는 하루, 아름다운 객실을 둘러보고 마음에 드는 숙소를 저장해 두세요. ' * 3
+            job = Job(id='f'*32, workflow_version=2, photos=[{'file': 'photo.jpg', 'sha256': 'one'}],
+                storyboard=Storyboard(scenes=[{'photos': [0], 'text': '음성은 그대로', 'caption_text': caption}]),
+                narration={'0': {'file': 'voice.wav'}})
+            with patch('studio.render.job_path', return_value=folder):
+                job.preview = render(job, preview=True)
+                job.preview['revision'] = render_revision(job)
+                self.assertFalse((folder / 'stay-reel.mp4').exists())
+                before = (folder / job.preview['file']).read_bytes()
+                final = publish_preview(job)
+            self.assertEqual(before, (folder / final['file']).read_bytes())
+            cues = (folder / final['srt']).read_text(encoding='utf-8').strip().split('\n\n')
+            self.assertGreater(len(cues), 1)
+            self.assertTrue(all(len(cue.splitlines()[2:]) <= 2 for cue in cues))
+            self.assertEqual((folder / final['script']).read_text(encoding='utf-8-sig').strip(), '음성은 그대로')
+
     def test_four_exports_share_timeline_and_clean_video_has_no_captions_or_audio(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)

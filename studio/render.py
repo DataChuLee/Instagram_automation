@@ -4,9 +4,11 @@ import json
 import re
 import subprocess
 import wave
+import shutil
 from pathlib import Path
 
-from .media import allocate_frames, caption_image, crop_photo, srt_time
+from .media import allocate_frames, caption_image, caption_segments, crop_photo, srt_time
+from .assets import render_revision
 from .paths import RESOURCES, job_path
 
 
@@ -48,7 +50,7 @@ def verify(path, decode=True):
         run('-i', path, '-f', 'null', '-')
 
 
-def render(job, progress=lambda message: None):
+def render(job, progress=lambda message: None, preview=False):
     if not job.storyboard:
         raise ValueError('대본이 없습니다.')
     folder = job_path(job.id)
@@ -73,13 +75,23 @@ def render(job, progress=lambda message: None):
             seconds = source.getnframes() / source.getframerate()
         moving = [job.generated.get(str(index), {}).get('file') is not None for index in scene.photos]
         counts = allocate_frames(seconds, moving)
-        caption = export / f'caption-{scene_index:03}.png'
-        caption_image(scene.text, job.options.caption).save(caption)
         scene_duration = sum(counts) / 30
+        segments = caption_segments(scene.caption_text if scene.caption_text is not None else scene.text, job.options.caption)
+        scene_start = offset
+        caption_paths = []
+        weights = [max(len(text), 1) for text in segments]
+        boundary = 0
+        for part, text in enumerate(segments):
+            caption = export / f'caption-{scene_index:03}-{part:03}.png'
+            caption_image(text, job.options.caption).save(caption)
+            start = scene_duration * boundary / sum(weights)
+            boundary += weights[part]
+            end = scene_duration * boundary / sum(weights)
+            caption_paths.append((caption, start, end))
+            subtitles.append(f'{len(subtitles)+1}\n{srt_time(offset+start)} --> {srt_time(offset+end)}\n{text}\n')
         padded = export / f'padded-{scene_index:03}.wav'
         run('-i', adjusted, '-af', 'apad', '-t', scene_duration, padded)
         audio_clips.append(padded)
-        subtitles.append(f'{scene_index+1}\n{srt_time(offset)} --> {srt_time(offset+scene_duration)}\n{scene.text}\n')
         for photo_index, count, is_moving in zip(scene.photos, counts, moving):
             progress(f'{photo_index + 1}/{len(job.photos)} 사진을 1080p로 합성 중입니다.')
             clip = export / f'clip-{len(clips):03}.mp4'
@@ -88,8 +100,8 @@ def render(job, progress=lambda message: None):
                 source = folder / job.generated[str(photo_index)]['file']
                 if video_size(source) != (1080, 1920):
                     raise RuntimeError('생성 영상이 네이티브 1080×1920이 아닙니다. 저해상도 결과를 확대하지 않습니다.')
-                inputs = ['-stream_loop', '-1', '-i', source]
-                base = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,setsar=1'
+                inputs = ['-i', source]
+                base = f'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,setsar=1,tpad=stop_mode=clone:stop_duration={count/30+1}'
             else:
                 source = export / f'photo-{photo_index:03}.jpg'
                 crop_photo(folder / job.photos[photo_index]['file'], *focus.get(photo_index, (0.5, 0.5))).save(source, quality=96)
@@ -99,8 +111,16 @@ def render(job, progress=lambda message: None):
             encoding = ['-an', '-frames:v', count, '-r', '30', '-c:v', 'libx264',
                         '-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'fast',
                         '-threads', '2', '-movflags', '+faststart']
-            run(*inputs, '-loop', '1', '-i', caption, '-filter_complex',
-                f'[0:v]{base},split=2[clean][base];[base][1:v]overlay=0:0:format=auto,format=yuv420p[v]',
+            filters = [f'[0:v]{base},split=2[clean][base]']
+            current = 'base'
+            for part, (caption, start, end) in enumerate(caption_paths):
+                inputs += ['-loop', '1', '-i', caption]
+                local_start, local_end = start - (offset - scene_start), end - (offset - scene_start)
+                output = f'cap{part}'
+                filters.append(f"[{current}][{part+1}:v]overlay=0:0:format=auto:enable='gte(t,{local_start})*lt(t,{local_end})'[{output}]")
+                current = output
+            filters.append(f'[{current}]format=yuv420p[v]')
+            run(*inputs, '-filter_complex', ';'.join(filters),
                 '-map', '[clean]', *encoding, clean_clip, '-map', '[v]', *encoding, clip)
             clips.append(clip)
             clean_clips.append(clean_clip)
@@ -139,9 +159,31 @@ def render(job, progress=lambda message: None):
                           'script': 'stay-script.txt', 'srt': 'stay-reel.srt'}}
     (publish / 'verification.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     # All deliverables are prepared before making the new set available.
+    prefix = f'preview-{render_revision(job)}-' if preview else ''
     for name in ('stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3', 'stay-reel.srt',
                  'stay-script.txt', 'preview.jpg', 'verification.json'):
-        (publish / name).replace(folder / name)
-    return {'file': result.name, 'video': 'stay-video.mp4', 'audio': 'stay-voice.mp3',
-            'script': 'stay-script.txt', 'srt': 'stay-reel.srt', 'verification': 'verification.json',
-            'duration': offset, 'frames': report['frames']}
+        (publish / name).replace(folder / (prefix + name))
+    warnings = []
+    if not 25 <= offset <= 35:
+        warnings.append(f'실제 길이가 {offset:.1f}초입니다. 권장 길이는 25~35초입니다.')
+    if offset / len(timeline) < 1.5:
+        warnings.append('사진당 평균 노출이 1.5초보다 짧습니다. 사진 수를 줄여 보세요.')
+    if timeline[-1]['frames'] < 30:
+        warnings.append('마지막 사진의 노출이 1초보다 짧습니다.')
+    return {'file': prefix + result.name, 'video': prefix + 'stay-video.mp4', 'audio': prefix + 'stay-voice.mp3',
+            'script': prefix + 'stay-script.txt', 'srt': prefix + 'stay-reel.srt', 'verification': prefix + 'verification.json',
+            'duration': offset, 'frames': report['frames'], 'warnings': warnings}
+
+
+def publish_preview(job):
+    folder = job_path(job.id)
+    names = {'file': 'stay-reel.mp4', 'video': 'stay-video.mp4', 'audio': 'stay-voice.mp3',
+             'script': 'stay-script.txt', 'srt': 'stay-reel.srt', 'verification': 'verification.json'}
+    for key in names:
+        if not (folder / job.preview[key]).is_file():
+            raise ValueError('미리보기 파일이 없습니다. 미리보기를 다시 만들어 주세요.')
+    for key, name in names.items():
+        pending = folder / (name + '.pending')
+        shutil.copyfile(folder / job.preview[key], pending)
+        pending.replace(folder / name)
+    return {**job.preview, **names}
