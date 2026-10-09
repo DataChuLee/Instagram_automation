@@ -42,7 +42,7 @@ class Pipeline:
         job = store.read(job_id)
         if assets.pending(job):
             raise ValueError('제출한 생성 작업을 먼저 완료하거나 복구해 주세요.')
-        if job.workflow_version < 2 and (job.generated or job.narration):
+        if job.workflow_version < 2 and (job.generated or assets.voice_started(job)):
             raise ValueError('생성 결과가 있는 작업은 대본을 다시 분석할 수 없습니다. 새 작업을 만들어 주세요.')
         self.update(job, 'analyzing', 'Codex가 사진을 보고 대본과 움직임 장면을 고르고 있습니다.')
         assets.capture(job)
@@ -118,15 +118,24 @@ class Pipeline:
             if saved.get('file') and (folder / saved['file']).exists():
                 continue
             if saved.get('state') == 'submitted' and not saved.get('url'):
-                raise RuntimeError('응답을 확인하지 못한 Drama3 생성이 있습니다. Fish History에서 확인한 음성을 해당 장면에 복구해 주세요.')
+                if saved.get('project_id') and saved.get('block'):
+                    continue  # Recover the submitted MCP block without another purchase.
+                raise RuntimeError('응답을 확인하지 못한 기존 브라우저 음성이 있습니다. Fish History 음성을 복구해 주세요.')
             if saved.get('url'):
                 continue
-            credits = await self.drama.quote(scene.text)
-            voices.append({'scene': scene_index, 'text': scene.text, 'credits': credits,
-                           'asset_key': assets.cache_key(job, assets.voice_key(job, scene))})
+            asset_key = assets.cache_key(job, assets.voice_key(job, scene))
+            saved = job.narration.setdefault(str(scene_index), {})
+            saved.update(asset_key=asset_key, text=scene.text)
+            async def persist(data):
+                saved.update(data)
+                assets.capture(job)
+                store.save(job)
+            name = 'Stay Studio ' + job.id + ' ' + stable_hash(asset_key)
+            voice_quote = await self.drama.quote(scene.text, name, saved, persist)
+            voices.append({**voice_quote, 'scene': scene_index, 'asset_key': asset_key})
         assets.capture(job)
         total = sum(item['credits'] for item in videos + voices)
-        balances = [item['balance'] for item in videos if item.get('balance') is not None]
+        balances = [item['balance'] for item in videos + voices if item.get('balance') is not None]
         if balances and total > min(balances):
             raise RuntimeError('영상과 음성 전체 견적이 남은 Fish 크레딧보다 큽니다.')
         job.quote = {'id': uuid.uuid4().hex, 'total': total, 'videos': videos, 'voices': voices,
@@ -201,16 +210,19 @@ class Pipeline:
             saved['asset_key'] = asset_key
             saved['text'] = scene.text
             output = folder / (f'voice-{stable_hash(asset_key)}.mp3' if job.workflow_version >= 2 else f'voice-{scene_index:03}.mp3')
+            async def submitted(data):
+                saved.update(data)
+                assets.capture(job)
+                store.save(job)
             if saved.get('url'):
                 await self.fish.download(saved['url'], output)
             elif saved.get('state') == 'submitted':
-                raise RuntimeError('중단된 음성 생성은 자동 재요청하지 않습니다. Fish History 음성을 복구해 주세요.')
+                if not saved.get('project_id') or not saved.get('block'):
+                    raise RuntimeError('중단된 음성 생성은 자동 재요청하지 않습니다. Fish History 음성을 복구해 주세요.')
+                await self.drama.recover(saved, output, submitted)
             else:
                 item = next(item for item in job.quote['voices'] if item['scene'] == scene_index)
-                async def submitted(data):
-                    saved.update(data)
-                    store.save(job)
-                await self.drama.generate(scene.text, item['credits'], output, submitted)
+                await self.drama.generate(scene.text, item['credits'], output, submitted, item)
             saved['file'] = output.name
             assets.capture(job)
             store.save(job)
