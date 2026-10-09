@@ -53,6 +53,41 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         self.fish.call.assert_not_called()
         self.drama.generate.assert_not_called()
 
+    async def test_mcp_resume_uses_saved_block_without_another_generation(self):
+        self.job.narration['0'].update(project_id='project', block='block', rev='rev')
+        store.save(self.job)
+        async def recover(record, path, saved):
+            await saved({'state': 'completed', 'url': 'https://fish.audio/audio.mp3'})
+            path.write_bytes(b'audio')
+        self.drama.recover.side_effect = recover
+        self.pipeline.render = AsyncMock()
+        await self.pipeline.generate(self.job.id)
+        self.drama.recover.assert_awaited_once()
+        self.drama.generate.assert_not_called()
+        self.assertEqual(store.read(self.job.id).narration['0']['file'], 'voice-000.mp3')
+
+    async def test_quote_persists_mcp_references_before_approval(self):
+        self.job.narration = {}
+        store.save(self.job)
+        async def quote(text, name, record, persist):
+            await persist({'project_id': 'project', 'block': 'block', 'rev': 'rev'})
+            return {'credits': 6, 'balance': 100, 'project_id': 'project', 'block': 'block', 'rev': 'rev'}
+        self.drama.quote.side_effect = quote
+        await self.pipeline.quote(self.job.id, 'workspace')
+        saved = store.read(self.job.id)
+        self.assertEqual(saved.narration['0']['block'], 'block')
+        self.assertEqual(saved.quote['voices'][0]['project_id'], 'project')
+        self.assertEqual(saved.quote['total'], 6)
+        self.drama.generate.assert_not_called()
+
+    async def test_legacy_free_quote_does_not_block_reanalysis(self):
+        self.job.narration = {'0': {'project_id': 'project', 'block': 'block',
+                                  'asset_key': 'prepared', 'text': '숙소'}}
+        store.save(self.job)
+        with patch('studio.pipeline.codex.analyze', AsyncMock(return_value=self.job.storyboard)):
+            await self.pipeline.analyze(self.job.id)
+        self.assertEqual(store.read(self.job.id).state, 'uploaded')
+
     async def test_quote_uses_only_selected_photos_and_exact_prompts(self):
         from PIL import Image
         self.job.photos = [{'sha256': str(i), 'file': f'photo-{i}.jpg'} for i in range(3)]
@@ -70,7 +105,7 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
             return {'can_generate': True, 'credits': 3, 'pricing_version': 'test', 'balance': 100}
         self.fish.call.side_effect = call
         self.fish.upload.return_value = 'test-key'
-        self.drama.quote.return_value = 2
+        self.drama.quote.return_value = {'credits': 2}
         await self.pipeline.quote(self.job.id, 'test-workspace')
         quote = store.read(self.job.id).quote
         self.assertEqual([item['photo'] for item in quote['videos']], [1, 2])
