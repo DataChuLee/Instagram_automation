@@ -51,6 +51,11 @@ def pending(job):
     return any(r.get('state') in {'submitting', 'submitted'} and not r.get('file') for r in records)
 
 
+def voice_started(job):
+    return any(r.get('state') in {'submitting', 'submitted', 'completed'} or r.get('url') or r.get('file')
+               for r in job.narration.values())
+
+
 def render_revision(job):
     return stable_hash({'photos': [p.get('sha256', p.get('file')) for p in job.photos],
         'storyboard': job.storyboard.model_dump() if job.storyboard else None,
