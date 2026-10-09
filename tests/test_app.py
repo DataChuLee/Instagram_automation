@@ -57,6 +57,17 @@ class AppTests(unittest.TestCase):
             files=[('files',('p.jpg',b'not an image','image/jpeg'))])
         self.assertEqual(response.status_code,400)
 
+    def test_photo_preview_keeps_the_tail_of_long_screen_captions(self):
+        job = self.upload()
+        prefix = '가' * 160
+        first = self.client.post(f'/api/jobs/{job["id"]}/preview', headers=self.headers,
+            json={'text': prefix + '나' * 20})
+        second = self.client.post(f'/api/jobs/{job["id"]}/preview', headers=self.headers,
+            json={'text': prefix + '다' * 20})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertNotEqual(hashlib.sha256(first.content).hexdigest(), hashlib.sha256(second.content).hexdigest())
+
     def test_manual_motion_is_independent_of_ai_count_and_invalidates_quote(self):
         from studio import store
         from studio.models import Job, CreateOptions, Storyboard
@@ -99,6 +110,18 @@ class AppTests(unittest.TestCase):
 
     def test_external_host_rejected(self):
         self.assertEqual(self.client.get('/',headers={'Host':'evil.example'}).status_code,400)
+
+    def test_legacy_mcp_quote_allows_script_edit_before_paid_submission(self):
+        from studio import store
+        from studio.models import Job, Storyboard
+        record = Job(id='d' * 32, photos=[{'sha256': 'photo'}],
+                     storyboard=Storyboard(scenes=[{'photos': [0], 'text': '숙소'}]),
+                     narration={'0': {'project_id': 'project', 'block': 'block'}})
+        store.save(record)
+        response = self.client.post(f'/api/jobs/{record.id}/storyboard', headers=self.headers,
+                                    json={'scenes': [{'photos': [0], 'text': '새 대본'}]})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(store.read(record.id).narration, {})
 
     def test_uncertain_paid_submission_blocks_storyboard_edits(self):
         from studio import store
