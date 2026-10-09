@@ -48,6 +48,9 @@ try:
     else:
         raise RuntimeError('Frozen server startup timeout')
     assert 'stay' in html
+    assert 'data-connect="drama"' not in html
+    assert 'data-connect="fish"' in html
+    assert 'Drama3' in html
     token = re.search(r'name="studio-token" content="([^"]+)"', html).group(1)
     def api(path, value=None):
         request = urllib.request.Request(base + path, None if value is None else json.dumps(value).encode(),
