@@ -75,8 +75,12 @@ try:
                 route.continue_()
         page.route('**/style', style_route)
         page.goto(base, wait_until='networkidle')
+        (probe / 'loaded.html').write_text(page.content(), encoding='utf-8')
+        page.locator('#historyPanel summary').click()
         page.locator('#history button').first.click()
         page.wait_for_function("document.querySelectorAll('#motionGrid input').length===10")
+        page.locator('#motionEditor summary').click()
+        page.locator('#advancedStyle summary').click()
         assert page.locator('#motionGrid input').nth(0).is_checked()
         assert page.locator('#motionPrompts textarea').input_value() == 'AI suggested slow pan'
         assert page.locator('#quoteBox').is_visible()
@@ -106,7 +110,7 @@ try:
         page.locator('#posX').evaluate("el=>{el.value='-3.5';el.dispatchEvent(new Event('input',{bubbles:true}));}")
         assert page.locator('#posXInput').input_value() == '-3.5'
         page.locator('#saveStyle').click()
-        page.wait_for_function("document.querySelector('#statusTitle').textContent.includes('자막 설정을 저장')")
+        page.wait_for_function("document.querySelector('#statusTitle').textContent.includes('변경 사항을 저장') && !document.querySelector('#newJob').disabled")
         assert api('/api/jobs/' + job['id'])['options']['caption']['x'] == -3.5
         page.locator('#motionGrid input').nth(0).uncheck()
         page.locator('#motionGrid input').nth(1).check()
@@ -115,7 +119,7 @@ try:
         page.locator('#motionPrompts textarea').nth(1).fill('Slow camera pan to the right')
         assert page.locator('#quoteBox').is_hidden()
         page.locator('#saveStyle').click()
-        page.wait_for_function("document.querySelector('#statusTitle').textContent.includes('자막 설정을 저장')")
+        page.wait_for_function("document.querySelector('#statusTitle').textContent.includes('변경 사항을 저장') && !document.querySelector('#newJob').disabled")
         assert page.locator('#motionPrompts textarea').nth(0).input_value() == '물결만 잔잔하게 움직여 주세요'
         assert page.locator('#quoteBox').is_hidden()
         page.locator('#motionPrompts textarea').nth(0).fill('   ')
@@ -136,7 +140,7 @@ try:
             assert page.locator('#newJob').is_disabled()
             hold['style'] = False
             held_styles.pop().continue_()
-        page.wait_for_function("document.querySelector('#planNotice').textContent===''")
+        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
         saved = api('/api/jobs/' + job['id'])
         assert [m['photo'] for m in saved['storyboard']['motion']] == [1, 2]
         assert saved['storyboard']['motion'][0]['prompt'] == '물결만 잔잔하게 움직여 주세요'
@@ -179,7 +183,7 @@ try:
         for index in [0, 6, 7, 8, 9]:
             page.locator('#motionGrid input').nth(index).check()
         page.locator('#savePlan').click()
-        page.wait_for_function("document.querySelector('#planNotice').textContent===''")
+        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
         assert len(api('/api/jobs/' + job['id'])['storyboard']['motion']) == 10
         page.screenshot(path=str(probe / 'desktop.png'), full_page=True)
         page.set_viewport_size({'width': 390, 'height': 844})
@@ -188,7 +192,7 @@ try:
         for index in range(10):
             page.locator('#motionGrid input').nth(index).uncheck()
         page.locator('#savePlan').click()
-        page.wait_for_function("document.querySelector('#planNotice').textContent===''")
+        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
         assert api('/api/jobs/' + job['id'])['storyboard']['motion'] == []
         record = json.loads(job_file.read_text(encoding='utf-8'))
         record['generated'] = {'1': {'idempotency_key': 'pending'}}
