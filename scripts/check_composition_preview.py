@@ -63,6 +63,7 @@ try:
         page.on('request',lambda r:paid.append(r.url) if r.url.endswith(('/quote','/approve')) else None)
         page.route('**/api/connections',lambda route:route.fulfill(json={'codex':True,'fish':True,'workspaces':[],'codex_login':'','message':''}))
         page.goto(base,wait_until='networkidle')
+        page.locator('#historyPanel summary').click()
         page.locator('#history button').first.click()
         page.wait_for_function("document.querySelectorAll('#storyboard textarea').length===6")
         assert page.locator('#previewVideo').is_enabled()
@@ -79,7 +80,7 @@ try:
         page.get_by_role('textbox',name='1번 장면 화면 자막').fill('음성과 별도인 새 자막')
         assert page.locator('#exportFinal').is_disabled()
         page.locator('#savePlan').click()
-        page.wait_for_function("document.querySelector('#planNotice').textContent===''")
+        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
         assert read()['narration']['0']['file']=='voice0.wav'
         assert page.locator('#previewVideo').is_enabled()
         page.get_by_role('button',name='1번 사진 뒤으로 이동').click()
@@ -98,7 +99,7 @@ try:
         page.locator('#cropX').evaluate("el=>{el.value='0.3';el.dispatchEvent(new Event('input',{bubbles:true}));}")
         page.wait_for_function("!document.querySelector('#cropPreview').hidden")
         page.locator('#savePlan').click()
-        page.wait_for_function("document.querySelector('#planNotice').textContent===''")
+        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
         assert next(f for f in read()['storyboard']['crop_focus'] if f['photo']==1)['x']==0.3
         page.locator('input[name=compositionMode][value=ai]').check()
         assert page.locator('#aiControls').is_visible()
