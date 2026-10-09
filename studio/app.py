@@ -26,7 +26,7 @@ from .pipeline import Pipeline
 
 TOKEN = secrets.token_urlsafe(32)
 fish = Fish()
-drama = Drama()
+drama = Drama(fish)
 pipeline = Pipeline(fish, drama)
 pending_login = DATA / 'auth/codex-login-message.txt'
 connection = {'fish': False, 'workspaces': [], 'message': '',
@@ -52,7 +52,6 @@ async def lifespan(app):
     for task in tasks:
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
-    await drama.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -107,8 +106,7 @@ async def connections():
     except (OSError, RuntimeError):
         connected = False
     return {**connection, 'codex': connected,
-            'fish_login_url': fish.authorization_url if connection.get('fish_busy') else None,
-            'drama_open': drama.login_open or bool(drama.page and not drama.page.is_closed())}
+            'fish_login_url': fish.authorization_url if connection.get('fish_busy') else None}
 
 
 @app.post('/api/connect/codex')
@@ -160,19 +158,8 @@ async def oauth_callback(code: str, state: str | None = None, iss: str | None = 
 
 @app.post('/api/connect/drama')
 async def connect_drama():
-    if connection.get('drama_busy'):
-        return {'ok': True}
-    connection['drama_busy'] = True
-    async def work():
-        try:
-            await drama.open_login()
-            connection['message'] = '열린 Chrome/Edge에서 Google 로그인을 직접 완료한 뒤 해당 로그인 창을 닫아 주세요. 그 다음 프로그램에서 진행하세요.'
-        except Exception as error:
-            connection['message'] = 'Fish 브라우저를 열지 못했습니다. ' + error_description(error)
-        finally:
-            connection['drama_busy'] = False
-    spawn(work())
-    return {'ok': True}
+    # Compatibility for older tabs: both features now share Fish OAuth.
+    return await connect_fish()
 
 
 @app.get('/api/jobs')
@@ -360,11 +347,12 @@ async def edit_storyboard(job_id: str, value: dict):
         assets.invalidate(job)
         store.save(job)
         return job.model_dump()
-    if pipeline.busy(job_id) or job.narration or any(v.get('generation_id') or v.get('idempotency_key') for v in job.generated.values()):
+    if pipeline.busy(job_id) or assets.voice_started(job) or any(v.get('generation_id') or v.get('idempotency_key') for v in job.generated.values()):
         raise ValueError('생성 전에만 대본·움직임을 바꿀 수 있습니다. 새 작업을 만들어 주세요.')
     job.storyboard = Storyboard.validate_plan(value, len(job.photos), len(job.photos))
     job.quote = job.approval = None
     job.generated = {}
+    job.narration = {}
     job.state, job.error = 'uploaded', None
     job.message = '대본·움직임 설정을 저장했습니다. 크레딧 견적을 다시 확인해 주세요.'
     store.save(job)
@@ -604,7 +592,7 @@ async def preview(job_id: str, value: dict):
     if not 0 <= index < len(job.photos):
         raise ValueError('사진 번호가 올바르지 않습니다.')
     caption = CaptionStyle.model_validate(value.get('caption', {}))
-    text = value.get('text', '이런 숙소, 어때요?')[:160]
+    text = value.get('text', '이런 숙소, 어때요?')[:320]
     focus = next(((item.x, item.y) for item in job.storyboard.crop_focus if item.photo == index),
                  (0.5, 0.5)) if job.storyboard else (0.5, 0.5)
     if 'focus' in value:
