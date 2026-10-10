@@ -113,8 +113,10 @@ class Storyboard(BaseModel):
         if len({scene.id for scene in plan.scenes}) != len(plan.scenes):
             raise ValueError('장면 ID가 중복되었습니다.')
         indices = [index for item in plan.motion for index in item.photos]
-        if len(plan.motion) > max_motion or len(set(indices)) != len(indices):
+        if len(plan.motion) > max_motion:
             raise ValueError('움직임 장면 수가 설정 범위를 벗어났습니다.')
+        if len(set(indices)) != len(indices):
+            raise ValueError('같은 사진이 여러 움직임 클립에 들어 있습니다.')
         if any(index >= photo_count for index in indices):
             raise ValueError('움직임 장면의 사진 번호가 올바르지 않습니다.')
         if any(focus.photo >= photo_count for focus in plan.crop_focus):
