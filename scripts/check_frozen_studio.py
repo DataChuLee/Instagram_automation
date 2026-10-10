@@ -105,7 +105,8 @@ try:
     saved = json.loads((job_root / 'job.json').read_text(encoding='utf-8'))
     saved['narration'] = {'0': {'file': 'fixture.wav', 'source': 'local smoke-test fixture'}}
     (job_root / 'job.json').write_text(json.dumps(saved, ensure_ascii=False), encoding='utf-8')
-    assert (folder/'_internal/studio/skills/stay-shortform/SKILL.md').is_file()
+    assert (folder/'_internal/studio/skills/stay-shortform/SKILL_TEXT.md').is_file()
+    assert (folder/'_internal/studio/skills/stay-shortform/SKILL_MOTION.md').is_file()
     api(f"/api/jobs/{job['id']}/preview-video", {})
     for _ in range(120):
         job = api('/api/jobs/' + job['id'])
