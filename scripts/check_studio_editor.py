@@ -1,4 +1,4 @@
-"""Exercise caption numeric controls and manual motion editing without paid calls."""
+"""Exercise caption numeric controls and per-clip motion prompt editing without paid calls."""
 import json
 import os
 from pathlib import Path
@@ -47,7 +47,10 @@ try:
     gallery = api('/api/collections/' + collection_id)
     job = api('/api/jobs/import', {'collection_id': collection_id, 'photos': [p['id'] for p in gallery['photos'][:10]]})
     api('/api/jobs/' + job['id'] + '/storyboard', {'scenes': [{'photos': list(range(10)), 'text': '숙소에서 쉬는 하루'}],
-        'motion': [{'photo': 0, 'prompt': 'AI suggested slow pan'}]})
+        'motion': [{'photo': 0, 'photos': [0, 1, 2, 3], 'seconds': 10, 'prompt': 'AI suggested slow pan'},
+                   {'photo': 4, 'photos': [4, 5, 6], 'seconds': 8, 'prompt': 'Slow push in'},
+                   {'photo': 7, 'photos': [7, 8, 9], 'seconds': 7, 'prompt': 'Slow pan left'}]})
+    clips = [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9]]
     job_file = data / 'jobs' / job['id'] / 'job.json'
     record = json.loads(job_file.read_text(encoding='utf-8'))
     record['options']['max_motion'] = 0
@@ -78,11 +81,12 @@ try:
         (probe / 'loaded.html').write_text(page.content(), encoding='utf-8')
         page.locator('#historyPanel summary').click()
         page.locator('#history button').first.click()
-        page.wait_for_function("document.querySelectorAll('#motionGrid input').length===10")
+        page.wait_for_function("document.querySelectorAll('#motionPrompts textarea').length===3")
         page.locator('#motionEditor summary').click()
         page.locator('#advancedStyle summary').click()
-        assert page.locator('#motionGrid input').nth(0).is_checked()
-        assert page.locator('#motionPrompts textarea').input_value() == 'AI suggested slow pan'
+        assert page.locator('#motionEditor input[type=checkbox]').count() == 0
+        assert page.locator('#motionPrompts .motion-clip-photos').nth(0).locator('img').count() == 4
+        assert page.locator('#motionPrompts textarea').nth(0).input_value() == 'AI suggested slow pan'
         assert page.locator('#quoteBox').is_visible()
         assert page.locator('#motion').get_attribute('type') == 'hidden'
         assert not page.locator('#motion').is_visible()
@@ -112,9 +116,6 @@ try:
         page.locator('#saveStyle').click()
         page.wait_for_function("document.querySelector('#statusTitle').textContent.includes('변경 사항을 저장') && !document.querySelector('#newJob').disabled")
         assert api('/api/jobs/' + job['id'])['options']['caption']['x'] == -3.5
-        page.locator('#motionGrid input').nth(0).uncheck()
-        page.locator('#motionGrid input').nth(1).check()
-        page.locator('#motionGrid input').nth(2).check()
         page.locator('#motionPrompts textarea').nth(0).fill('물결만 잔잔하게 움직여 주세요')
         page.locator('#motionPrompts textarea').nth(1).fill('Slow camera pan to the right')
         assert page.locator('#quoteBox').is_hidden()
@@ -134,7 +135,7 @@ try:
                 if held_styles:
                     break
             assert held_styles, 'Quote style request did not arrive'
-            assert page.locator('#motionGrid input').nth(1).is_disabled()
+            assert page.locator('#motionPrompts textarea').nth(1).is_disabled()
             assert page.locator('#motionPrompts textarea').nth(0).is_disabled()
             assert page.locator('#fontSizeInput').is_disabled()
             assert page.locator('#newJob').is_disabled()
@@ -142,12 +143,12 @@ try:
             held_styles.pop().continue_()
         page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
         saved = api('/api/jobs/' + job['id'])
-        assert [m['photo'] for m in saved['storyboard']['motion']] == [1, 2]
+        assert [m['photos'] for m in saved['storyboard']['motion']] == clips
         assert saved['storyboard']['motion'][0]['prompt'] == '물결만 잔잔하게 움직여 주세요'
         assert saved['quote'] is None and saved['approval'] is None
         assert quotes and quotes[-1]['workspace'] == 'test'
         page.locator('#history button').first.click()
-        page.wait_for_function("document.querySelectorAll('#motionPrompts textarea').length===2")
+        page.wait_for_function("document.querySelectorAll('#motionPrompts textarea').length===3")
         assert page.locator('#fontSizeInput').input_value() == '72'
         assert page.locator('#posYInput').input_value() == '-12.5'
         record = json.loads(job_file.read_text(encoding='utf-8'))
@@ -170,38 +171,30 @@ try:
                     break
             assert held_styles
             assert page.locator('#motionPrompts textarea').nth(0).is_disabled()
-            assert page.locator('#motionGrid input').nth(3).is_disabled()
+            assert page.locator('#motionPrompts textarea').nth(2).is_disabled()
             assert page.locator('#history button').first.is_disabled()
             assert page.locator('#fontSizeInput').is_disabled()
             hold['style'] = False
             held_styles.pop().continue_()
         assert approved == [{'quote_id': 'new', 'expected_credits': 3}]
-        page.wait_for_function("!document.querySelector('#motionGrid input').disabled")
-        for index in [3, 4, 5]:
-            page.locator('#motionGrid input').nth(index).check()
-        assert page.locator('#motionGrid input').nth(6).is_enabled()
-        for index in [0, 6, 7, 8, 9]:
-            page.locator('#motionGrid input').nth(index).check()
+        page.wait_for_function("!document.querySelector('#motionPrompts textarea').disabled")
+        page.locator('#motionPrompts textarea').nth(2).fill('Gentle tilt up')
         page.locator('#savePlan').click()
         page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
-        assert len(api('/api/jobs/' + job['id'])['storyboard']['motion']) == 10
+        saved = api('/api/jobs/' + job['id'])['storyboard']['motion']
+        assert [m['photos'] for m in saved] == clips and saved[2]['prompt'] == 'Gentle tilt up'
         page.screenshot(path=str(probe / 'desktop.png'), full_page=True)
         page.set_viewport_size({'width': 390, 'height': 844})
         page.screenshot(path=str(probe / 'mobile.png'), full_page=True)
         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
-        for index in range(10):
-            page.locator('#motionGrid input').nth(index).uncheck()
-        page.locator('#savePlan').click()
-        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
-        assert api('/api/jobs/' + job['id'])['storyboard']['motion'] == []
         record = json.loads(job_file.read_text(encoding='utf-8'))
         record['generated'] = {'1': {'idempotency_key': 'pending'}}
         job_file.write_text(json.dumps(record), encoding='utf-8')
         page.locator('#history button').first.click()
-        page.wait_for_function("document.querySelector('#motionGrid input').disabled")
+        page.wait_for_function("document.querySelector('#motionPrompts textarea').disabled")
         assert all(item.is_disabled() for item in page.locator('#storyboard textarea').all())
         assert not errors, errors
-        print('Numeric sync/validation/persistence; photos 2+3 prompts; quote/approval locks; all 10 photos selected; submitted lock; mobile passed')
+        print('Numeric sync/validation/persistence; 4-3-3 clip prompts; quote/approval locks; clip grouping kept on save; submitted lock; mobile passed')
         browser.close()
 finally:
     process.terminate()
