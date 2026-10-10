@@ -22,7 +22,7 @@
 <p id="sourceNames" class="source-names" hidden></p><p id="photoLockNote" class="muted" hidden>작업이 진행 중입니다. 완료 후 사진을 수정하세요.</p>
 <details id="candidatePanel" hidden><summary id="candidateCount">후보 사진</summary><p class="muted">사용할 사진을 순서대로 고르세요. 현재 구성을 교체하면 대본을 다시 작성합니다. AI 추천은 이 후보 안에서만 고릅니다.</p><div id="candidateGrid" class="collection-grid"></div><button id="applyCandidates" class="outline">선택한 사진으로 구성</button> <button id="removeCandidates" class="quiet">선택한 사진 후보에서 제거</button></details>
 <div class="photo-heading"><span id="photoCount">사진 0장</span><span>모든 사진이 영상에 담깁니다</span></div><div id="photoGrid" class="photo-grid"></div>
-<div class="analysis-controls"><input id="motion" type="hidden" value="7"><button id="analyze" class="dark" disabled>사진 분석 & 대본 만들기 ↗</button></div>
+<div class="analysis-controls"><input id="motion" type="hidden" value="7"><button id="enhance" class="outline" disabled>고화질 변환 · 인물 제거 ↗</button><button id="analyze" class="dark" disabled>사진 분석 & 대본 만들기 ↗</button></div><p id="enhanceHelp" class="muted">고화질 변환은 ChatGPT 구독 사용량을 씁니다. 사진 10장 기준 약 3~4분 걸리고, 사진마다 원본으로 되돌릴 수 있어요.</p>
 <div id="storyboard" class="storyboard"><p class="muted">사진을 분석하면 장면별 대본이 여기에 나타납니다.</p></div>
 <details id="motionEditor" class="motion-editor"><summary id="motionHeading">사진 움직임 설정 <span id="motionCount">0장 선택</span></summary><p id="motionHelp" class="muted">사진 분석 후 움직일 사진을 직접 고르고 프롬프트를 입력할 수 있어요.</p><div id="motionGrid" class="motion-grid"></div><div id="motionPrompts"></div></details><button id="savePlan" class="outline" hidden>변경 사항 저장</button><p id="planNotice" class="muted" role="status"></p>
 <details class="history-section" id="historyPanel"><summary>이전 작업 불러오기</summary><div id="history"></div></details>
