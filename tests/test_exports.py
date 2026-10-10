@@ -1,4 +1,6 @@
 import io
+import math
+import struct
 import re
 import subprocess
 import tempfile
@@ -13,6 +15,11 @@ from studio.models import Job, Storyboard
 from studio.render import ffmpeg, render, run, publish_preview
 
 
+def tone(frames):
+    # A steady 440Hz tone: narration silence is trimmed away during rendering, so fixtures need audible sound.
+    return b''.join(struct.pack('<h', round(8000 * math.sin(2 * math.pi * 440 * i / 48000))) for i in range(frames))
+
+
 class ExportTests(unittest.TestCase):
     def test_short_motion_holds_last_frame_instead_of_looping(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -23,7 +30,7 @@ class ExportTests(unittest.TestCase):
                 '-c:v','libx264','-pix_fmt','yuv420p',folder/'motion.mp4')
             with wave.open(str(folder/'voice.wav'),'wb') as audio:
                 audio.setparams((1,2,48000,0,'NONE','not compressed'))
-                audio.writeframes(b'\0\0'*48000)
+                audio.writeframes(tone(48000))
             job=Job(id='f'*32,photos=[{'sha256':'one'}],
                 storyboard=Storyboard(scenes=[{'photos':[0],'text':'객실'}],motion=[{'photo':0,'prompt':'Subtle movement'}]),
                 generated={'0':{'file':'motion.mp4'}},narration={'0':{'file':'voice.wav'}})
@@ -34,17 +41,17 @@ class ExportTests(unittest.TestCase):
             self.assertGreater(blue,200)
             self.assertLess(red,40)
 
-    def test_preview_exports_identical_bytes_and_long_caption_segments_have_two_lines(self):
+    def test_preview_exports_identical_bytes_and_long_captions_split_into_single_lines(self):
         from studio.assets import render_revision
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             Image.new('RGB', (360, 640), '#228844').save(folder / 'photo.jpg')
             with wave.open(str(folder / 'voice.wav'), 'wb') as audio:
                 audio.setparams((1, 2, 48000, 0, 'NONE', 'not compressed'))
-                audio.writeframes(b'\0\0' * 48000)
+                audio.writeframes(tone(48000))
             caption = '초록빛 정원에서 쉬어가는 하루, 아름다운 객실을 둘러보고 마음에 드는 숙소를 저장해 두세요. ' * 3
             job = Job(id='f'*32, workflow_version=2, photos=[{'file': 'photo.jpg', 'sha256': 'one'}],
-                storyboard=Storyboard(scenes=[{'photos': [0], 'text': '음성은 그대로', 'caption_text': caption}]),
+                storyboard=Storyboard(scenes=[{'photos': [0], 'text': caption.strip()}]),
                 narration={'0': {'file': 'voice.wav'}})
             with patch('studio.render.job_path', return_value=folder):
                 job.preview = render(job, preview=True)
@@ -55,8 +62,8 @@ class ExportTests(unittest.TestCase):
             self.assertEqual(before, (folder / final['file']).read_bytes())
             cues = (folder / final['srt']).read_text(encoding='utf-8').strip().split('\n\n')
             self.assertGreater(len(cues), 1)
-            self.assertTrue(all(len(cue.splitlines()[2:]) <= 2 for cue in cues))
-            self.assertEqual((folder / final['script']).read_text(encoding='utf-8-sig').strip(), '음성은 그대로')
+            self.assertTrue(all(len(cue.splitlines()[2:]) == 1 for cue in cues))
+            self.assertEqual((folder / final['script']).read_text(encoding='utf-8-sig').strip(), caption.strip())
 
     def test_four_exports_share_timeline_and_clean_video_has_no_captions_or_audio(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,7 +71,7 @@ class ExportTests(unittest.TestCase):
             Image.new('RGB', (360, 640), '#228844').save(folder / 'photo.jpg')
             with wave.open(str(folder / 'voice.wav'), 'wb') as audio:
                 audio.setparams((1, 2, 48000, 0, 'NONE', 'not compressed'))
-                audio.writeframes(b'\0\0' * 24000)
+                audio.writeframes(tone(24000))
             job = Job(id='f' * 32, photos=[{'file': 'photo.jpg'}],
                       storyboard=Storyboard(scenes=[{'photos': [0], 'text': '초록빛 쉼표'}]),
                       narration={'0': {'file': 'voice.wav'}})
@@ -91,8 +98,8 @@ class ExportTests(unittest.TestCase):
             video_seconds = float(re.search(r'Duration: 00:00:([\d.]+)', clean).group(1))
             subtitle_seconds = float(re.search(r'--> 00:00:(\d+,\d+)', srt).group(1).replace(',', '.'))
             self.assertLess(abs(video_seconds - subtitle_seconds), 0.034)
-            self.assertGreater(video_seconds, 0.65)
-            self.assertLess(video_seconds, 0.85)
+            self.assertGreater(video_seconds, 0.45)
+            self.assertLess(video_seconds, 0.6)
             # Clean solid-color frame stays uniform at the caption location; final has text.
             def frame(key):
                 output = folder / (key + '.png')
