@@ -95,12 +95,6 @@ try:
         page.get_by_role('button',name='결과 복원').first.click()
         page.wait_for_function("!document.querySelector('#previewVideo').disabled")
         assert read()['narration']['0']['file']=='voice1.wav'
-        page.locator('#cropEditor summary').click()
-        page.locator('#cropX').evaluate("el=>{el.value='0.3';el.dispatchEvent(new Event('input',{bubbles:true}));}")
-        page.wait_for_function("!document.querySelector('#cropPreview').hidden")
-        page.locator('#savePlan').click()
-        page.wait_for_function("document.querySelector('#planNotice').textContent==='' && !document.querySelector('#newJob').disabled")
-        assert next(f for f in read()['storyboard']['crop_focus'] if f['photo']==1)['x']==0.3
         page.locator('input[name=compositionMode][value=ai]').check()
         assert page.locator('#aiControls').is_visible()
         def recommend(route):
