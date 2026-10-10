@@ -170,6 +170,77 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400, response.text)
         self.assertEqual(store.read(record.id).storyboard.scenes[0].text, '숙소')
 
+    def test_enhance_requires_codex_login_and_valid_photos(self):
+        job = self.upload()
+        response = self.client.post(f'/api/jobs/{job["id"]}/enhance', headers=self.headers, json={'photos': None})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('로그인', response.json()['detail'])
+        with patch('studio.app.codex.login_status', return_value=True):
+            response = self.client.post(f'/api/jobs/{job["id"]}/enhance', headers=self.headers, json={'photos': [5]})
+        self.assertEqual(response.status_code, 400)
+
+    def test_enhance_launches_requested_photos(self):
+        job = self.upload()
+        with patch('studio.app.codex.login_status', return_value=True),              patch.object(module.pipeline, 'launch') as launch:
+            response = self.client.post(f'/api/jobs/{job["id"]}/enhance', headers=self.headers, json={'photos': [0]})
+        self.assertEqual(response.status_code, 202, response.text)
+        launch.assert_called_once_with(job['id'], module.pipeline.enhance, [0])
+
+    def test_photo_source_toggle_and_files(self):
+        from studio import enhance, store
+        from studio.models import Storyboard
+        job = self.upload()
+        record = store.read(job['id'])
+        response = self.client.post(f'/api/jobs/{record.id}/photos/0/source', headers=self.headers, json={'source': 'enhanced'})
+        self.assertEqual(response.status_code, 400)
+        Image.new('RGB', (1080, 1920), 'teal').save(self.folder / record.id / 'photo-000-enhanced.jpg')
+        enhance.record(record, 0, file='photo-000-enhanced.jpg')
+        store.save(record)
+        response = self.client.post(f'/api/jobs/{record.id}/photos/0/source', headers=self.headers, json={'source': 'original'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['photos'][0]['file'], 'photo-000.jpg')
+        for name in ('photo-000.jpg', 'photo-000-enhanced.jpg'):
+            self.assertEqual(self.client.get(f'/api/jobs/{record.id}/files/{name}').status_code, 200)
+        record = store.read(record.id)
+        record.storyboard = Storyboard(scenes=[{'photos': [0], 'text': '숙소'}])
+        store.save(record)
+        response = self.client.post(f'/api/jobs/{record.id}/photos/0/source', headers=self.headers, json={'source': 'enhanced'})
+        self.assertEqual(response.status_code, 400)
+        with patch('studio.app.codex.login_status', return_value=True):
+            response = self.client.post(f'/api/jobs/{record.id}/enhance', headers=self.headers, json={'photos': None})
+        self.assertEqual(response.status_code, 400)
+
+    def test_saved_fish_login_reconnects_without_browser(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        saved = dict(module.connection)
+        try:
+            module.connection.update(fish=False, workspaces=[], fish_busy=False)
+            value = {'workspaces': [{'workspace_id': 'w', 'workspace_name': '기본'}]}
+            with patch.object(module.fish, 'call', AsyncMock(return_value=value)) as call:
+                asyncio.run(module.restore_fish())
+            call.assert_awaited_once_with('list_my_workspaces', {})
+            self.assertTrue(module.connection['fish'])
+            self.assertEqual(module.connection['workspaces'], value['workspaces'])
+            self.assertFalse(module.connection['fish_busy'])
+        finally:
+            module.connection.clear(); module.connection.update(saved)
+
+    def test_missing_or_expired_fish_login_stays_disconnected(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        saved = dict(module.connection)
+        try:
+            module.connection.update(fish=False, workspaces=[], fish_busy=False, message='')
+            failure = AsyncMock(side_effect=RuntimeError('Fish 계정을 먼저 연결해 주세요.'))
+            with patch.object(module.fish, 'call', failure):
+                asyncio.run(module.restore_fish())
+            self.assertFalse(module.connection['fish'])
+            self.assertFalse(module.connection['fish_busy'])
+            self.assertEqual(module.connection['message'], '')
+        finally:
+            module.connection.clear(); module.connection.update(saved)
+
     def seed_collection(self):
         collection_id = 'c' * 32
         content = self.photo()
