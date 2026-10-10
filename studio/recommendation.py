@@ -54,7 +54,7 @@ def candidates(job, collection_id=None, photo_ids=()):
     """Only photos the user attached or picked from a collection become candidates."""
     by_id = {c['id']: dict(c) for c in job.candidates}
     for photo in job.photos:
-        by_id.setdefault(photo['sha256'], dict(photo, id=photo['sha256']))
+        by_id.setdefault(photo['sha256'], dict(photo, id=photo['sha256'], file=photo.get('original_file', photo['file'])))
     if collection_id and photo_ids:
         gallery = collector.gallery(collection_id)
         if gallery['status'] == 'in_progress':
