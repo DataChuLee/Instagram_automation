@@ -36,12 +36,12 @@ report=json.loads((folder / 'verification.json').read_text(encoding='utf-8'))
 assert report['photos']==25
 assert sorted(p['photo'] for p in report['timeline'])==list(range(25))
 assert report['timeline'][0]['motion']
-run('-f','lavfi','-i','color=black:s=720x1280:r=30','-t','0.2','-c:v','libx264',folder / 'lowres.mp4')
+run('-f','lavfi','-i','color=black:s=480x854:r=30','-t','0.2','-c:v','libx264',folder / 'lowres.mp4')
 job.generated['0']['file']='lowres.mp4'
 try:
     render(job)
 except RuntimeError as error:
-    assert '네이티브' in str(error)
+    assert '720p' in str(error)
 else:
     raise AssertionError('Low-resolution motion accepted')
-print('25 photos, mixed video, full decode and native1080 rejection passed')
+print('25 photos, mixed video, full decode and sub-720p rejection passed')
