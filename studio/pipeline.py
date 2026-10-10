@@ -37,6 +37,9 @@ class Pipeline:
         try:
             await operation(job_id, *args)
         except Exception as error:
+            # The MCP client wraps failures like an expired login in a TaskGroup error; show the real one.
+            while isinstance(error, ExceptionGroup) and error.exceptions:
+                error = error.exceptions[0]
             job = store.read(job_id)
             job.state = 'error'
             job.error = str(error) or type(error).__name__
