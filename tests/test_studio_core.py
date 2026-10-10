@@ -41,6 +41,14 @@ class StudioCoreTests(unittest.TestCase):
             self.assertEqual([(len(c['photos']), c['seconds']) for c in plan], clips)
             self.assertEqual([p for c in plan for p in c['photos']], list(range(count)))
 
+    def test_speech_end_ignores_trailing_silence(self):
+        from studio.render import run, speech_end
+        with tempfile.TemporaryDirectory() as directory:
+            audio = Path(directory) / 'voice.wav'
+            run('-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.6', '-af', 'apad=pad_dur=0.4',
+                '-ar', '48000', '-ac', '2', audio)
+            self.assertAlmostEqual(speech_end(audio), 0.6, delta=0.02)
+
     def test_shot_bounds_follow_hard_cuts_in_a_generated_clip(self):
         from studio.render import run, shot_bounds
         with tempfile.TemporaryDirectory() as directory:
