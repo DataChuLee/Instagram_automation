@@ -33,12 +33,22 @@ def select(job, ids):
                 if min(image.size) < 300:
                     raise ValueError('사진의 짧은 변은 300px 이상이어야 합니다.')
                 image.save(staging / name, quality=97)
-            photos.append(dict(candidate, file=name, sha256=candidate.get('sha256', identifier),
-                               width=image.width, height=image.height))
+            photo = dict(candidate, file=name, sha256=candidate.get('sha256', identifier),
+                         width=image.width, height=image.height)
+            photo.pop('original_file', None)
+            enhanced = photo.get('enhanced') or {}
+            if enhanced.get('state') == 'done' and (folder / enhanced['file']).is_file():
+                photo['original_file'] = name
+                if enhanced.get('active', True):
+                    photo['file'] = enhanced['file']
+            else:
+                photo.pop('enhanced', None)
+            photos.append(photo)
         assets.capture(job)
         assets.checkpoint(job)
         for photo in photos:
-            (staging / photo['file']).replace(folder / photo['file'])
+            name = photo.get('original_file', photo['file'])
+            (staging / name).replace(folder / name)
     job.photos = photos
     job.photo_order = list(range(len(photos)))
     job.storyboard = None
