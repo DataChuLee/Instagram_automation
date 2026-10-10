@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
@@ -73,6 +74,52 @@ class FishResponseTests(unittest.IsolatedAsyncioTestCase):
         response = CallToolResult(content=[], structured_content=['Permission denied'], is_error=True)
         with self.assertRaisesRegex(RuntimeError, 'Permission denied'):
             await self.call_response(response)
+
+    def shared(self, tool):
+        opened = []
+
+        @asynccontextmanager
+        async def session(interactive=False):
+            opened.append(interactive)
+            yield SimpleNamespace(call_tool=tool)
+
+        fish = Fish()
+        fish.session = session
+        return fish, opened
+
+    async def test_calls_reuse_one_session(self):
+        fish, opened = self.shared(AsyncMock(return_value=CallToolResult(content=[], structured_content={'ok': 1})))
+        for _ in range(3):
+            self.assertEqual(await fish.call('get_generation_status', {}), {'ok': 1})
+        self.assertEqual(await fish.calls([('a', {}), ('b', {})]), [{'ok': 1}, {'ok': 1}])
+        self.assertEqual(opened, [False])
+
+    async def test_calls_returns_tool_errors_per_request(self):
+        fish, _ = self.shared(AsyncMock(return_value=CallToolResult(content=[TextContent(text='Denied')], is_error=True)))
+        results = await fish.calls([('a', {})])
+        self.assertIsInstance(results[0], RuntimeError)
+
+    async def test_dropped_session_reports_why_it_closed(self):
+        from mcp.shared.exceptions import MCPError
+        closed = asyncio.Event()
+
+        async def tool(name, args):
+            await closed.wait()
+            raise MCPError(code=-32000, message='Connection closed')
+
+        @asynccontextmanager
+        async def session(interactive=False):
+            yield SimpleNamespace(call_tool=tool)
+            closed.set()
+            raise ExceptionGroup('unhandled errors in a TaskGroup', [RuntimeError('Fish 로그인이 만료되었습니다.')])
+
+        fish = Fish()
+        fish.session = session
+        call = asyncio.create_task(fish.call('get_generation_status', {}))
+        await asyncio.sleep(0.01)
+        fish.link.active, fish.link.used = 0, float('-inf')  # Let the holder close as if the server dropped it.
+        with self.assertRaisesRegex(RuntimeError, '로그인이 만료'):
+            await call
 
     async def test_legacy_sdk_tool_error_is_reported(self):
         response = SimpleNamespace(structuredContent={'error': 'Denied'}, content=[], isError=True)
