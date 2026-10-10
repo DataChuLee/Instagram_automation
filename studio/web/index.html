@@ -31,7 +31,7 @@
 <section class="style-panel"><div class="panel-heading"><h2>자막 & 완성</h2><span class="small-dot"></span></div>
 <p class="muted">사진을 선택하고 자막을 수정하세요. 변경 사항은 상단에서 한 번에 저장합니다.</p>
 <label class="field">선택한 사진의 대본·자막<input id="captionText" maxlength="160" value="이런 숙소, 어때요?"></label>
-<details id="cropEditor"><summary>선택한 사진의 세로 크롭</summary><p class="muted">피사체가 보이도록 중심을 조절하세요. 움직임 사진의 크롭을 바꾸면 해당 영상만 새 견적이 필요합니다.</p><label class="field">가로 중심<input id="cropX" type="range" min="0" max="1" step="0.01" value="0.5"></label><label class="field">세로 중심<input id="cropY" type="range" min="0" max="1" step="0.01" value="0.5"></label><img id="cropPreview" alt="선택한 사진의 세로 크롭 확인" hidden></details>
+
 <div class="range-field"><div class="range-heading"><label for="fontSize">글자 크기</label><input id="fontSizeInput" aria-label="글자 크기 직접 입력" aria-describedby="fontSizeError" type="number" min="28" max="120" step="1" value="64" required></div><input id="fontSize" type="range" min="28" max="120" value="64"><small id="fontSizeError" class="input-error" hidden>28~120 사이 정수를 입력하세요.</small></div>
 <details id="advancedStyle"><summary>자막 위치·색상·음성 속도 설정</summary>
 <div class="range-field"><div class="range-heading"><label for="posY">위아래 위치</label><input id="posYInput" aria-label="Y 위치 직접 입력" aria-describedby="posYError" type="number" min="-35" max="35" step="0.5" value="13" required></div><input id="posY" type="range" min="-35" max="35" value="13" step="0.5"><small id="posYError" class="input-error" hidden>-35~35 사이를 0.5 단위로 입력하세요.</small><p class="muted">양수는 위로, 음수는 아래로 이동합니다.</p></div>
