@@ -141,7 +141,7 @@ class Job(BaseModel):
     id: str
     state: Literal['uploaded', 'analyzing', 'quoting', 'awaiting_approval', 'generating',
                    'rendering', 'complete', 'error', 'interrupted', 'recommending',
-                   'previewing', 'preview_ready'] = 'uploaded'
+                   'previewing', 'preview_ready', 'enhancing'] = 'uploaded'
     message: str = '사진을 준비했습니다.'
     photos: list[dict] = Field(default_factory=list)
     sources: list[dict] = Field(default_factory=list)
