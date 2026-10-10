@@ -1,5 +1,5 @@
 """Content-addressed media reuse, independent from scene and photo ordering."""
-from .models import DRAMA_MODEL, VOICE_ID, VIDEO_MODEL, MOTION_PARAMETERS, stable_hash
+from .models import DRAMA_MODEL, VOICE_ID, stable_hash
 
 
 def voice_key(job, scene):
@@ -7,10 +7,14 @@ def voice_key(job, scene):
 
 
 def motion_key(job, motion):
-    focus = next(((f.x, f.y) for f in job.storyboard.crop_focus if f.photo == motion.photo), (.5, .5))
-    photo = job.photos[motion.photo]
-    return 'motion:' + stable_hash({'photo': photo.get('sha256', photo.get('file')), 'crop': focus,
-        'prompt': motion.prompt, 'model': VIDEO_MODEL, 'parameters': MOTION_PARAMETERS})
+    focus = {f.photo: (f.x, f.y) for f in job.storyboard.crop_focus}
+    photos = [job.photos[index].get('sha256', job.photos[index].get('file')) for index in motion.photos]
+    value = {'photo': photos[0], 'crop': focus.get(motion.photo, (.5, .5)),
+             'prompt': motion.prompt, 'model': job.video_model, 'parameters': job.video_parameters}
+    if len(motion.photos) > 1 or motion.seconds != 4:
+        # Multi-photo clips; single 4s clips keep their original key so cached results stay reusable.
+        value.update(photos=photos, crops=[focus.get(i, (.5, .5)) for i in motion.photos], seconds=motion.seconds)
+    return 'motion:' + stable_hash(value)
 
 
 def cache_key(job, key):
