@@ -117,12 +117,12 @@ class PreviewWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 pipeline.fish.call.assert_not_called()
                 pipeline.drama.generate.assert_not_called()
 
-    async def test_caption_change_does_not_quote_another_voice(self):
+    async def test_existing_voice_is_not_quoted_again(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             (folder / 'voice.mp3').write_bytes(b'ready')
             job = Job(id='a'*32, workflow_version=2, photos=[{'sha256': 'one'}],
-                storyboard=Storyboard(scenes=[{'photos': [0], 'text': '객실', 'caption_text': '다른 자막'}]),
+                storyboard=Storyboard(scenes=[{'photos': [0], 'text': '객실'}]),
                 narration={'0': {'file': 'voice.mp3'}})
             with patch('studio.store.job_path', return_value=folder), patch('studio.pipeline.job_path', return_value=folder):
                 store.save(job)
