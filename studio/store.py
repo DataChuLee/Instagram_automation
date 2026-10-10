@@ -65,9 +65,13 @@ def approve(job: Job, quote_id: str, credits: int):
 
 
 def plan_hash(job):
-    return stable_hash({'photos': [p['sha256'] for p in job.photos],
-                        'storyboard': job.storyboard.model_dump() if job.storyboard else None,
-                        'attempts': job.attempts})
+    value = {'photos': [p['sha256'] for p in job.photos],
+             'storyboard': job.storyboard.model_dump() if job.storyboard else None,
+             'attempts': job.attempts}
+    if not job.default_video():
+        # Only non-default choices join the hash so quotes approved before model selection stay valid.
+        value['video'] = job.video_choice()
+    return stable_hash(value)
 
 
 def generation_allowed(job):
