@@ -10,7 +10,7 @@ $('fishState').after(fishLoginLink);
 let job = null, selectedPhoto = 0, previewUrl = null, previewSequence = 0, previewTimer, dirtyScript = false;
 let collection = null, collectionSelected = new Set(), sourceBusy = false, polling = false;
 const exportCache = new Map();
-const busyStates = new Set(['analyzing','recommending','quoting','generating','rendering','previewing']);
+const busyStates = new Set(['analyzing','recommending','quoting','generating','rendering','previewing','enhancing']);
 const numericControls = ['fontSize','posY','posX'];
 const motionPromptCache = new Map();
 let candidateSelected = new Set(), dirtyStyle = false, modelComparison = null;
@@ -74,9 +74,27 @@ function drawPhotos(){
     const button=document.createElement('button');button.title=photo.name;button.setAttribute('aria-label',`${position+1}번 사진 선택`);button.classList.toggle('selected',index===selectedPhoto);
     const image=document.createElement('img');image.src=`/api/jobs/${job.id}/files/${photo.file}`;image.alt=photo.name;image.loading='lazy';const number=document.createElement('span');number.textContent=String(position+1).padStart(2,'0');button.append(image,number);
     button.onclick=action(()=>selectPhoto(index));
-    const controls=document.createElement('div');controls.className='photo-moves';for(const [label,delta] of [['←',-1],['→',1]]){const move=document.createElement('button');move.textContent=label;move.setAttribute('aria-label',`${position+1}번 사진 ${delta<0?'앞':'뒤'}으로 이동`);move.disabled=planLocked()||position+delta<0||position+delta>=order.length;move.onclick=action(()=>movePhoto(position,position+delta));controls.append(move);}card.append(button,controls);
+    const controls=document.createElement('div');controls.className='photo-moves';for(const [label,delta] of [['←',-1],['→',1]]){const move=document.createElement('button');move.textContent=label;move.setAttribute('aria-label',`${position+1}번 사진 ${delta<0?'앞':'뒤'}으로 이동`);move.disabled=planLocked()||position+delta<0||position+delta>=order.length;move.onclick=action(()=>movePhoto(position,position+delta));controls.append(move);}card.append(button,controls);enhanceControls(card,button,photo,index,position);
     const reason=job.storyboard?.selection_reasons?.[String(index)];if(reason){const details=document.createElement('small');details.textContent=reason;card.append(details);}grid.append(card);
   });drawCandidates();loadCrop();drawPhotoNav();
+}
+function enhanceLocked(){return Boolean(!job||sourceBusy||busyStates.has(job.state)||job.pending_media||job.storyboard||Object.keys(job.generated).length||Object.keys(job.narration).length||job.result);}
+function enhanceControls(card,button,photo,index,position){
+  const enhanced=photo.enhanced||{},done=enhanced.state==='done',active=done&&photo.file===enhanced.file;
+  if(active){const badge=document.createElement('b');badge.className='hd-badge';badge.textContent='HD';button.append(badge);}
+  if(photo.enhancing){const mark=document.createElement('small');mark.className='enhance-note';mark.textContent='변환 중…';card.append(mark);return;}
+  if(!photo.enhanced)return;
+  const row=document.createElement('div');row.className='photo-enhance';
+  if(done){const toggle=document.createElement('button');toggle.textContent=active?'HD':'원본';toggle.title=active?'변환본 사용 중 · 눌러서 원본으로':'원본 사용 중 · 눌러서 변환본으로';toggle.setAttribute('aria-label',`${position+1}번 사진 ${active?'원본으로 되돌리기':'변환본 사용'}`);toggle.setAttribute('aria-pressed',String(active));toggle.disabled=enhanceLocked();toggle.onclick=action(()=>photoSource(index,active?'original':'enhanced'));row.append(toggle);}
+  const retry=document.createElement('button');retry.textContent='↻';retry.title='다시 변환';retry.setAttribute('aria-label',`${position+1}번 사진 다시 변환`);retry.disabled=enhanceLocked();retry.onclick=action(()=>enhancePhotos([index]));row.append(retry);card.append(row);
+  if(enhanced.error){const note=document.createElement('small');note.className='enhance-note failed';note.textContent=done?'다시 변환 실패 · 이전 변환본 유지':'변환 실패 · 원본 사용';note.title=enhanced.error;card.append(note);}
+}
+async function photoSource(index,source){
+  await planTransaction(async()=>{job=await api(`/api/jobs/${job.id}/photos/${index}/source`,{source});});
+  if(index===selectedPhoto){previewMode='photo';await updatePreview();}
+}
+async function enhancePhotos(photos=null){
+  await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();await api(`/api/jobs/${job.id}/enhance`,{photos});job=await api('/api/jobs/'+job.id);});
 }
 function photoOrder(){return job?.photo_order?.length?job.photo_order:(job?.photos||[]).map((_,i)=>i);}
 async function selectPhoto(index){selectedPhoto=index;previewMode='photo';$('video').pause();drawPhotos();const scene=job.storyboard?.scenes.find(s=>s.photos.includes(index));if(scene)$('captionText').value=scene.text;await updatePreview();}
@@ -163,7 +181,7 @@ function photosLocked(){return Boolean(job&&(busyStates.has(job.state)||job.pend
 function drawStatus(){
   const busy=sourceBusy||(job&&busyStates.has(job.state));
   const generated=job&&job.workflow_version<2&&(Object.keys(job.generated).length||Object.keys(job.narration).length||job.result);
-  $('analyze').disabled=!job||busy||Boolean(generated)||!numericValid(); $('saveStyle').disabled=!job||busy||!numericValid(); $('quote').disabled=!job?.storyboard||busy||!numericValid()||!planValid();
+  $('analyze').disabled=!job||busy||Boolean(generated)||!numericValid(); $('enhance').disabled=!job?.photos.length||enhanceLocked(); $('enhanceHelp').hidden=!job?.photos.length||Boolean(job.storyboard); $('saveStyle').disabled=!job||busy||!numericValid(); $('quote').disabled=!job?.storyboard||busy||!numericValid()||!planValid();
   $('newJob').disabled=sourceBusy; $('files').disabled=sourceBusy||photosLocked();
   $('dropZone').classList.toggle('locked',$('files').disabled); $('photoLockNote').hidden=!photosLocked();
   $('sourceNames').hidden=!job?.sources?.length;
@@ -295,6 +313,7 @@ $('newJob').onclick=()=>{
   $('speed').value='1';for(const id of numericControls){$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}
   $('files').value='';motionOptions();updateOutputs();drawPhotos();drawScript();drawStatus();
 };
+$('enhance').onclick=action(()=>enhancePhotos());
 $('analyze').onclick=action(async()=>{if(job.storyboard&&!window.confirm('사진을 다시 분석하면 현재 대본과 움직임 구성이 새로 작성됩니다. 다시 분석할까요?'))return;await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/analyze`,options());job=await api('/api/jobs/'+job.id);});});
 $('quote').onclick=action(async()=>{const workspace=$('workspace').value;if(!planValid())throw new Error('움직임 프롬프트와 대본을 확인해 주세요.');if(!workspace){$('settingsButton').click();throw new Error('크레딧 견적을 확인하려면 계정을 연결하고 사용할 계정을 선택해 주세요.');}await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/quote`,{workspace});job=await api('/api/jobs/'+job.id);drawScript();});});
 $('approve').onclick=action(async()=>{if(dirtyScript||!job.quote)throw new Error('대본·움직임이 바뀌었습니다. 견적을 다시 확인해 주세요.');const approval={quote_id:job.quote.id,expected_credits:job.quote.total};await planTransaction(async()=>{await persistEdits();previewMode='video';await api(`/api/jobs/${job.id}/approve`,approval);job=await api('/api/jobs/'+job.id);drawScript();});});
@@ -339,7 +358,7 @@ setInterval(async()=>{
   try{
     if(job&&busyStates.has(job.state)){
       const id=job.id,previous=job.state,next=await api('/api/jobs/'+id);
-      if(job?.id===id){job=next;drawStatus();if(previous!==job.state){drawScript();drawPhotos();if(job.state==='uploaded'&&job.storyboard){loadStyle();$('captionText').value=job.storyboard.scenes[0].text;await updatePreview();}if(['complete','preview_ready'].includes(job.state))await selectJob(job.id);await history();}}
+      if(job?.id===id){const before=JSON.stringify(job.photos);job=next;drawStatus();if(previous===job.state&&before!==JSON.stringify(job.photos)){drawPhotos();if(previewMode==='photo')await updatePreview();}if(previous!==job.state){drawScript();drawPhotos();if(job.state==='uploaded'&&job.storyboard){loadStyle();$('captionText').value=job.storyboard.scenes[0].text;await updatePreview();}if(['complete','preview_ready'].includes(job.state))await selectJob(job.id);await history();}}
     }
     if(collection?.status==='in_progress'){
       const id=collection.id,next=await api('/api/collections/'+id);if(collection?.id===id){collection=next;drawCollection();}
@@ -476,4 +495,4 @@ document.addEventListener('keydown',event=>{
   event.preventDefault();action(()=>stepPhoto(event.key==='ArrowLeft'?-1:1))();
 });
 new ResizeObserver(entries=>{document.documentElement.style.setProperty('--toolbar-offset',`${Math.ceil(entries[0].target.getBoundingClientRect().height)+24}px`);}).observe(document.querySelector('.workflow-toolbar'));
-drawStatus();restoreCollection();history().catch(showError);connections().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
+drawStatus();restoreCollection();history().catch(showError);(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
