@@ -45,6 +45,12 @@ def list_jobs():
 
 def recover():
     for job in list_jobs():
+        if job.state == 'enhancing':
+            for photo in job.photos:
+                photo.pop('enhancing', None)
+            job.state = 'uploaded'
+            job.message = '고화질 변환이 중단되었습니다. 다시 누르면 남은 사진만 변환합니다.'
+            save(job)
         if job.state in {'analyzing', 'recommending', 'quoting', 'generating', 'rendering', 'previewing'}:
             job.state = 'interrupted'
             job.message = '중단된 작업입니다. 저장된 생성 결과로 이어서 진행할 수 있습니다.'
