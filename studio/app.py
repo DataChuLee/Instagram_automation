@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import assets, codex, collector, composition, recommendation, store, video_models
+from . import assets, codex, collector, composition, enhance, recommendation, store, video_models
 from .drama import Drama
 from .fish import Fish
 from .media import crop_photo, preview_image
@@ -47,6 +47,7 @@ async def lifespan(app):
     initialize()
     store.recover()
     collector.recover()
+    spawn(restore_fish())
     yield
     tasks = list(background) + list(pipeline.tasks.values())
     for task in tasks:
@@ -130,6 +131,20 @@ async def connect_codex():
             connection['codex_busy'] = False
     spawn(work())
     return {'ok': True}
+
+
+async def restore_fish():
+    """Reconnects with the saved Fish token at startup; never opens a browser."""
+    if connection.get('fish') or connection.get('fish_busy'):
+        return
+    connection['fish_busy'] = True
+    try:
+        value = await fish.call('list_my_workspaces', {})
+        connection.update(fish=True, workspaces=value.get('workspaces', []), message='저장된 Fish 계정으로 연결했습니다.')
+    except Exception:
+        pass  # No saved or expired token: the user connects once from settings as before.
+    finally:
+        connection['fish_busy'] = False
 
 
 @app.post('/api/connect/fish')
@@ -246,6 +261,33 @@ def add_photos(job, inputs, source_metadata=None):
 async def append_photos(job_id: str, files: list[UploadFile] = File(...)):
     inputs = await read_uploads(files)
     return add_photos(store.read(job_id), inputs).model_dump()
+
+
+@app.post('/api/jobs/{job_id}/enhance', status_code=202)
+async def enhance_photos(job_id: str, value: dict):
+    job = store.read(job_id)
+    photos_editable(job)
+    selected = value.get('photos')
+    if not job.photos:
+        raise ValueError('변환할 사진을 먼저 넣어 주세요.')
+    if selected is not None and (not isinstance(selected, list) or not selected or len(set(selected)) != len(selected)
+                                 or any(type(i) is not int or not 0 <= i < len(job.photos) for i in selected)):
+        raise ValueError('변환할 사진 번호가 올바르지 않습니다.')
+    if not await codex.login_status():
+        raise ValueError('설정에서 ChatGPT 구독 계정으로 Codex에 로그인해 주세요.')
+    pipeline.launch(job_id, pipeline.enhance, selected)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/photos/{index}/source')
+async def photo_source(job_id: str, index: int, value: dict):
+    job = store.read(job_id)
+    photos_editable(job)
+    if not 0 <= index < len(job.photos) or value.get('source') not in {'original', 'enhanced'}:
+        raise ValueError('사진 번호나 선택 값이 올바르지 않습니다.')
+    enhance.use(job, index, value['source'] == 'enhanced')
+    store.save(job)
+    return job.model_dump()
 
 
 @app.post('/api/collections', status_code=202)
@@ -668,7 +710,7 @@ async def preview(job_id: str, value: dict):
 @app.get('/api/jobs/{job_id}/files/{name}')
 async def files(job_id: str, name: str):
     job = store.read(job_id)
-    allowed = {p['file'] for p in job.photos} | {'stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3',
+    allowed = enhance.files(job) | {'stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3',
                                                'stay-script.txt', 'stay-reel.srt', 'preview.jpg', 'verification.json'}
     allowed |= {p['file'] for p in job.candidates if p.get('file') and not p.get('collection_id')}
     if job.preview:
