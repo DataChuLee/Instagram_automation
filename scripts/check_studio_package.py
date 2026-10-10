@@ -37,5 +37,6 @@ with zipfile.ZipFile(ROOT/'dist/StayStudio-Windows.zip') as package:
         assert not parts.intersection({'.local','.env','auth.json','cookies.json','jobs','test_data','browser-profile'}),name
     assert any(n.endswith('studio/skills/stay-shortform/SKILL_TEXT.md') for n in names)
     assert any(n.endswith('studio/skills/stay-shortform/SKILL_MOTION.md') for n in names)
+    assert any(n.endswith('studio/skills/stay-shortform/SKILL_ENHANCE.md') for n in names)
     assert any(n.endswith('studio/skills/stay-shortform/LICENSE') for n in names)
 print('PASS: packaged Python modules/resources match current source; skill/license included; no stored jobs, photos, cookies or credentials in ZIP.')
