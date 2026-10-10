@@ -19,7 +19,6 @@
 /* Composition and revision controls follow the existing paper palette. */
 .composition-controls{margin:0 0 20px;padding:18px;border:1px solid #dddcd4;border-radius:12px;background:#f5f5ee}.composition-controls h3{margin:0 0 12px}.mode-tabs{display:flex;gap:18px;flex-wrap:wrap}.mode-tabs label{display:flex;align-items:center;gap:7px;font-weight:600}.composition-controls input[type=number]{width:100%}.preview-actions{display:grid;gap:10px;margin-top:18px}.ordered-photo{min-width:0}.ordered-photo>button{width:100%;position:relative}.photo-moves{display:flex;gap:4px;margin-top:5px}.photo-moves button{flex:1;padding:5px;border:1px solid #dddcd4;border-radius:5px;background:transparent}.ordered-photo small{display:block;font-size:11px;margin-top:6px;line-height:1.5}.scene-body label{display:block;font-size:12px;color:#65685e;margin-top:10px}.media-controls{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}.media-controls select{max-width:150px;font-size:12px}.media-controls button{font-size:11px}.motion-photo small{display:block;font-size:10px;line-height:1.4;padding:5px}.candidate-panel{margin:14px 0}#candidatePanel{margin:18px 0}#versionsList{display:grid;gap:7px;margin:10px 0}.preview-wrap video{width:100%;height:100%;object-fit:contain}
 .asset-player{width:100%;max-height:220px;margin-top:6px}.asset-player:is(audio){height:34px}
-#cropPreview{display:block;width:100%;max-height:320px;object-fit:contain;margin:12px 0;border-radius:5px}
 
 /* Keep the current task and its next action in view while editing. */
 :root{--muted:#5e6b63;--toolbar-offset:150px}
