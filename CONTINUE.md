@@ -1,5 +1,31 @@
 # 숙소 홍보 영상 자동화 — 대화 인계
 
+## 저장된 Fish 로그인 자동 복구 — 2026-10-10
+
+- Fish 토큰은 `.local/auth/fish-token.bin`에 남지만 연결 표시·작업 공간은 메모리에만 있어 재시작마다
+  설정 창이 뜨고 다시 연결해야 했다. 시작 시 `restore_fish()`가 저장 토큰으로 브라우저 없이
+  `list_my_workspaces`를 호출해 연결을 복구한다. 토큰 없음/만료면 기존처럼 수동 연결로 남는다.
+- 첫 화면은 복구가 끝날 때까지(최대 20초) 기다린 뒤 설정 창 표시 여부를 정한다.
+- 서버 8765 재시작 후 3초 안에 Fish 연결·작업 공간 1개 복구, 설정 창 미표시 확인. 테스트 130개 통과.
+- Codex는 `.local/auth/codex/auth.json`으로 원래 유지된다. 10-09부터 떠 있던 8765 프로세스가 로그인
+  상태를 잘못 보고(연결 버튼도 출력 없이 종료)했으나 같은 코드로 새로 띄우면 정상이었다. 원인 미확인.
+
+## Codex 고화질 변환 — 2026-10-10
+
+- 설계: `docs/superpowers/specs/2026-10-10-codex-image-enhance-design.md`. Codex CLI 내장
+  `image_generation`(구독 로그인, MCP/API 키 불필요)으로 사진을 고화질·인물 제거·9:16·화사한 보정으로
+  다시 만든다. 프롬프트는 `studio/skills/stay-shortform/SKILL_ENHANCE.md`(간판 유지, 확장 최소화).
+- `studio/enhance.py`가 Codex를 read-only로 실행하고 `CODEX_HOME/generated_images/<session>/`에서
+  결과를 가져와 1080×1920 JPEG로 저장한 뒤 세션 폴더를 지운다. 사진 dict는 `original_file`,
+  `enhanced{file,state,active,error}`를 갖고 `file`만 바꿔 끼우므로 뒤 단계는 수정하지 않았다.
+  v2 재구성(`composition.select`)도 후보에 복사한 `enhanced`로 선택을 이어받는다.
+- `POST /api/jobs/{id}/enhance`(4장 동시, 사진별 저장, 한도 시 중단), `POST /api/jobs/{id}/photos/{i}/source`.
+  상태 `enhancing`, 재시작 시 `uploaded`로 복구. UI: 변환 버튼, HD 배지, HD/원본 토글, ↻ 다시 변환.
+- 전역 Python은 fastapi 0.112/starlette 1.6 불일치로 `test_app` 등 import가 실패한다(기존 문제).
+  lock 파일로 만든 별도 venv에서 128개 테스트 통과. 가짜 Codex 브라우저 검증(진행·배지·토글·실패·모바일) 통과.
+- 실제 Codex로 Test_Data 10장 변환 171초·10장 성공, 변환본으로 분석·크롭 미리보기 통과.
+  결과: `output/codex_enhance_app_test_20261010/`. 유료 Fish 생성과 EXE 재빌드는 하지 않았다.
+
 ## UI 정리 — 2026-10-09
 
 - AI 움직임 추천 개수 메뉴를 화면에서 제거했다. 내부 추천 설정은 유지하고,
