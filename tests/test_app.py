@@ -110,6 +110,10 @@ class AppTests(unittest.TestCase):
 
     def test_external_host_rejected(self):
         self.assertEqual(self.client.get('/',headers={'Host':'evil.example'}).status_code,400)
+        self.assertEqual(self.client.get('/',headers={'Host':'ts.net.evil.example'}).status_code,400)
+
+    def test_tailscale_serve_host_allowed(self):
+        self.assertEqual(self.client.get('/',headers={'Host':'friend-pc.tail1234.ts.net'}).status_code,200)
 
     def test_legacy_mcp_quote_allows_script_edit_before_paid_submission(self):
         from studio import store
