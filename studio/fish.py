@@ -7,6 +7,7 @@ import os
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 from mcp import ClientSession
@@ -17,6 +18,12 @@ from mcp.shared.auth import OAuthClientMetadata, AuthorizationCodeResult, OAuthT
 from .paths import DATA, initialize
 
 URL = 'https://api.fish.audio/mcp'
+IDLE = 60  # Seconds the shared MCP session stays open after its last call.
+CONNECTION_CLOSED = -32000  # JSON-RPC code the SDK gives pending calls when the session drops.
+
+
+class ToolError(RuntimeError):
+    """Fish answered the call with an error, as opposed to the connection failing."""
 
 
 class Blob(ctypes.Structure):
@@ -69,6 +76,7 @@ class Fish:
         self.callback = None
         self.authorization_url = None
         self.lock = asyncio.Lock()
+        self.link = None
 
     async def redirect(self, url):
         self.authorization_url = url
@@ -109,23 +117,74 @@ class Fish:
                     await session.initialize()
                     yield session
 
-    async def call(self, name, args, interactive=False):
+    async def hold(self, link):
+        """Keeps one MCP session open in its own task until it has been idle for IDLE seconds."""
+        try:
+            async with self.session() as session:
+                link.session = session
+                link.ready.set_result(session)
+                while link.active or asyncio.get_running_loop().time() - link.used < IDLE:
+                    await asyncio.sleep(1)
+        except Exception as error:
+            while isinstance(error, ExceptionGroup) and error.exceptions:
+                error = error.exceptions[0]
+            link.failure = error
+            if not link.ready.done():
+                link.ready.set_exception(error)
+        finally:
+            link.closed = True
+            if not link.ready.done():
+                link.ready.cancel()
+
+    async def open(self):
+        """Returns the shared session, reconnecting if the last one closed or failed."""
         async with self.lock:
-            async with self.session(interactive) as session:
+            link = self.link
+            if link is None or link.closed:
+                loop = asyncio.get_running_loop()
+                link = SimpleNamespace(session=None, ready=loop.create_future(), active=0,
+                                       used=loop.time(), failure=None, closed=False)
+                link.task = asyncio.create_task(self.hold(link))
+                self.link = link
+            link.active += 1
+        try:
+            await asyncio.shield(link.ready)
+        except BaseException:
+            link.active -= 1
+            raise
+        return link
+
+    async def call(self, name, args, interactive=False):
+        if interactive:
+            # Login runs its own session; the shared one reconnects with the new tokens.
+            if self.link:
+                self.link.used, self.link = float('-inf'), None
+            async with self.session(True) as session:
                 response = await session.call_tool(name, args)
+            return self.parse(response)
+        link = await self.open()
+        try:
+            response = await link.session.call_tool(name, args)
+        except Exception as error:
+            # A dropped connection only reports "closed"; surface why it closed (e.g. expired login).
+            if link.closed or getattr(getattr(error, 'error', None), 'code', None) == CONNECTION_CLOSED:
+                await asyncio.wait({link.task}, timeout=5)
+            if link.failure is not None:
+                raise link.failure from error
+            raise
+        finally:
+            link.active -= 1
+            link.used = asyncio.get_running_loop().time()
         return self.parse(response)
 
     async def calls(self, requests):
-        """Run read-only calls in one MCP session; each result is a value or the RuntimeError it raised."""
-        results = []
-        async with self.lock:
-            async with self.session() as session:
-                for name, args in requests:
-                    try:
-                        results.append(self.parse(await session.call_tool(name, args)))
-                    except RuntimeError as error:
-                        results.append(error)
-        return results
+        """Run read-only calls together on the shared session; each result is a value or the ToolError it raised."""
+        async def one(name, args):
+            try:
+                return await self.call(name, args)
+            except ToolError as error:
+                return error
+        return await asyncio.gather(*(one(name, args) for name, args in requests))
 
     @staticmethod
     def parse(response):
@@ -140,7 +199,7 @@ class Fish:
         is_error = getattr(response, 'is_error', getattr(response, 'isError', False))
         if is_error or (isinstance(value, dict) and value.get('error')):
             detail = value.get('error', value) if isinstance(value, dict) else value
-            raise RuntimeError('Fish 작업에 실패했습니다: ' + str(detail))
+            raise ToolError('Fish 작업에 실패했습니다: ' + str(detail))
         return value
 
     async def connect(self):
