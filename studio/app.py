@@ -16,10 +16,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import assets, codex, collector, composition, recommendation, store
+from . import assets, codex, collector, composition, recommendation, store, video_models
 from .drama import Drama
 from .fish import Fish
-from .media import preview_image
+from .media import crop_photo, preview_image
 from .models import ApproveRequest, CaptionStyle, CreateOptions, CropFocus, Job, Storyboard
 from .paths import DATA, RESOURCES, initialize, job_path
 from .pipeline import Pipeline
@@ -368,6 +368,52 @@ async def quote(job_id: str, value: dict):
     return {'ok': True}
 
 
+@app.post('/api/jobs/{job_id}/video-models')
+async def compare_video_models(job_id: str, value: dict):
+    workspace = value.get('workspace')
+    if not workspace or not any(item['workspace_id'] == workspace for item in connection['workspaces']):
+        raise ValueError('모델별 크레딧을 비교하려면 연결된 Fish 작업 공간을 선택해 주세요.')
+    job = store.read(job_id)
+    if not job.photos:
+        raise ValueError('사진을 먼저 추가해 주세요.')
+    # Estimate with one real photo (prefer a motion photo) so credits match this job's input.
+    order = job.photo_order or list(range(len(job.photos)))
+    motion = job.storyboard.motion[0] if job.storyboard and job.storyboard.motion else None
+    index = motion.photo if motion else order[0]
+    focus = next(((f.x, f.y) for f in job.storyboard.crop_focus if f.photo == index), (0.5, 0.5)) if job.storyboard else (0.5, 0.5)
+    image = job_path(job.id) / 'model-probe.jpg'
+    await asyncio.to_thread(lambda: crop_photo(job_path(job.id) / job.photos[index]['file'], *focus).save(image, quality=96))
+    digest = hashlib.sha256(image.read_bytes()).hexdigest()
+    probe = job.model_probe or {}
+    if probe.get('workspace') != workspace or probe.get('sha256') != digest:
+        probe = {'workspace': workspace, 'sha256': digest, 'object_key': await fish.upload(image, workspace)}
+        job = store.read(job_id)
+        job.model_probe = probe
+        store.save(job)
+    prompt = motion.prompt if motion else 'Preserve the original scene; add only subtle natural motion.'
+    rows = await video_models.estimates(fish, workspace, probe['object_key'], prompt)
+    return {'models': rows, 'selected': job.video_choice(),
+            'motion_count': len(job.storyboard.motion) if job.storyboard else 0}
+
+
+@app.post('/api/jobs/{job_id}/video-model')
+async def select_video_model(job_id: str, value: dict):
+    job = store.read(job_id)
+    editable(job)
+    model, parameters = value.get('model'), value.get('parameters')
+    if not video_models.find(await video_models.catalog(fish), model, parameters):
+        raise ValueError('선택할 수 없는 영상 모델이거나 화질 설정입니다. 모델 목록을 다시 불러와 주세요.')
+    if job.video_choice() == {'model': model, 'parameters': parameters}:
+        return job.model_dump()
+    assets.capture(job)
+    job.video_model, job.video_parameters = model, parameters
+    assets.restore(job)  # Reuses clips already made with this model; others need a new quote.
+    assets.invalidate(job)
+    job.message = f'영상 모델을 {model} · {parameters["resolution"]}로 바꿨습니다. 크레딧 견적을 다시 확인해 주세요.'
+    store.save(job)
+    return job.model_dump()
+
+
 @app.post('/api/jobs/{job_id}/approve')
 async def approve(job_id: str, value: ApproveRequest):
     if pipeline.busy(job_id):
@@ -407,11 +453,16 @@ async def configure_composition(value: dict):
     target = value.get('target_count', 10)
     if type(target) is not int or not 1 <= target <= 60:
         raise ValueError('추천 장수는 1~60장입니다.')
-    job.candidates = recommendation.candidates(job, value.get('collection_id'))
+    picked = value.get('photos') if value.get('collection_id') else None
+    if picked is not None and (not isinstance(picked, list) or any(not isinstance(i, str) for i in picked)):
+        raise ValueError('가져올 사진 목록이 올바르지 않습니다.')
+    job.candidates = recommendation.candidates(job, value.get('collection_id'), picked or ())
+    if mode == 'ai' and not job.candidates:
+        raise ValueError('AI 추천에 사용할 사진을 먼저 첨부하거나 수집 목록에서 선택해 주세요.')
     job.target_count = target
     job.composition_mode = mode
     job.workflow_version = 2
-    if value.get('collection_id'):
+    if value.get('collection_id') and picked:
         gallery = collector.gallery(value['collection_id'])
         if not any(s.get('collection_id') == gallery['id'] for s in job.sources):
             job.sources.append({'name': gallery['name'], 'url': gallery['source_url'], 'collection_id': gallery['id']})
@@ -467,6 +518,16 @@ async def append_candidates(job_id: str, files: list[UploadFile] = File(...)):
                 total += candidate.get('bytes', 0)
         job.photo_order = (job.photo_order or list(range(old_count))) + list(range(old_count, len(job.photos)))
     job.message = f'후보 {len(job.candidates)}장 · 현재 구성 {len(job.photos)}장을 준비했습니다.'
+    store.save(job)
+    return job.model_dump()
+
+
+@app.post('/api/jobs/{job_id}/candidates/remove')
+async def remove_candidates(job_id: str, value: dict):
+    job = store.read(job_id)
+    editable(job)
+    composition.remove(job, value.get('ids'))
+    job.message = f'후보 {len(job.candidates)}장 · 현재 구성 {len(job.photos)}장입니다.'
     store.save(job)
     return job.model_dump()
 
