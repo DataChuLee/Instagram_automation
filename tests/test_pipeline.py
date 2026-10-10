@@ -136,3 +136,93 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item['photo'] for item in quote['videos']], [1, 2])
         self.assertEqual([item['request']['prompt'] for item in quote['videos']],
                          ['물결이 잔잔하게 움직입니다', 'Slow pan right'])
+
+
+class EnhancePipelineTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.folder = Path(self.temp.name)
+        self.patches = [patch('studio.store.job_path', lambda _: self.folder),
+                        patch('studio.pipeline.job_path', lambda _: self.folder)]
+        for item in self.patches:
+            item.start()
+        self.pipeline = Pipeline(AsyncMock(), AsyncMock())
+        self.job = Job(id='c' * 32, workflow_version=2,
+                       photos=[{'sha256': f's{i}', 'file': f'photo-{i:03}.jpg'} for i in range(3)])
+        store.save(self.job)
+
+    async def asyncTearDown(self):
+        for item in self.patches:
+            item.stop()
+        self.temp.cleanup()
+
+    def fake(self, outcomes):
+        """outcomes maps source file name to None (success) or an exception to raise."""
+        self.calls = []
+        async def enhance_photo(source, target):
+            self.calls.append(source.name)
+            outcome = outcomes.get(source.name)
+            if outcome:
+                raise outcome
+            target.write_bytes(b'enhanced')
+        return patch('studio.pipeline.enhance.enhance_photo', side_effect=enhance_photo)
+
+    async def test_partial_failure_keeps_original_and_finishes_uploaded(self):
+        from studio.enhance import EnhanceError
+        with self.fake({'photo-001.jpg': EnhanceError('생성된 이미지가 없습니다.')}):
+            await self.pipeline.enhance(self.job.id, None)
+        job = store.read(self.job.id)
+        self.assertEqual([p['file'] for p in job.photos],
+                         ['photo-000-enhanced.jpg', 'photo-001.jpg', 'photo-002-enhanced.jpg'])
+        self.assertEqual(job.photos[1]['enhanced']['state'], 'failed')
+        self.assertEqual(job.state, 'uploaded')
+        self.assertIn('성공 2장', job.message)
+        self.assertIn('실패 1장', job.message)
+
+    async def test_usage_limit_stops_and_keeps_finished_photos(self):
+        from studio.enhance import UsageLimit
+        self.pipeline_limit = UsageLimit('Codex 구독 사용 한도에 도달했습니다.')
+        with self.fake({'photo-000.jpg': self.pipeline_limit}):
+            await self.pipeline.guarded(self.job.id, self.pipeline.enhance, None)
+        job = store.read(self.job.id)
+        self.assertEqual(job.state, 'error')
+        self.assertIn('사용 한도', job.error)
+        self.assertNotIn('enhanced', job.photos[0])
+        self.assertFalse(any('enhancing' in p for p in job.photos))
+
+    async def test_photos_are_marked_while_enhancing(self):
+        seen = []
+        async def enhance_photo(source, target):
+            seen.append([p.get('enhancing') for p in store.read(self.job.id).photos])
+            target.write_bytes(b'enhanced')
+        with patch('studio.pipeline.enhance.enhance_photo', side_effect=enhance_photo):
+            await self.pipeline.enhance(self.job.id, [2])
+        self.assertEqual(seen, [[None, None, True]])
+        self.assertNotIn('enhancing', store.read(self.job.id).photos[2])
+
+    async def test_rerun_skips_enhanced_photos_and_retry_uses_original(self):
+        with self.fake({}):
+            await self.pipeline.enhance(self.job.id, None)
+        with self.fake({}):
+            await self.pipeline.enhance(self.job.id, None)
+        self.assertEqual(self.calls, [])
+        with self.fake({}):
+            await self.pipeline.enhance(self.job.id, [1])
+        self.assertEqual(self.calls, ['photo-001.jpg'])
+
+    async def test_enhance_refused_after_analysis(self):
+        self.job.storyboard = Storyboard(scenes=[{'photos': [0, 1, 2], 'text': '숙소'}])
+        store.save(self.job)
+        with self.fake({}), self.assertRaises(ValueError):
+            await self.pipeline.enhance(self.job.id, None)
+
+    async def test_interrupted_enhancement_returns_to_uploaded(self):
+        self.job.state = 'enhancing'
+        self.job.photos[0]['enhancing'] = True
+        store.save(self.job)
+        with patch('studio.store.list_jobs', return_value=[store.read(self.job.id)]):
+            store.recover()
+        job = store.read(self.job.id)
+        self.assertEqual(job.state, 'uploaded')
+        self.assertIn('다시', job.message)
+        self.assertFalse(any('enhancing' in p for p in job.photos))
