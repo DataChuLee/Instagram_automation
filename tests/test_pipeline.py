@@ -56,6 +56,12 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         self.drama.generate.assert_not_called()
         self.assertIn('자동 재요청하지 않습니다', store.read(self.job.id).error)
 
+    async def test_error_shows_reason_wrapped_in_task_group(self):
+        async def expired(_):
+            raise ExceptionGroup('unhandled errors in a TaskGroup', [RuntimeError('Fish 로그인이 만료되었습니다.')])
+        await self.pipeline.guarded(self.job.id, expired)
+        self.assertEqual(store.read(self.job.id).error, 'Fish 로그인이 만료되었습니다.')
+
     async def test_render_only_never_calls_paid_provider(self):
         with patch('studio.pipeline.render', return_value={'file': 'stay-reel.mp4'}) as renderer:
             await self.pipeline.render(self.job.id)
