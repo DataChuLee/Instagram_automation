@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import uuid
+from pathlib import Path
 
-from . import assets, codex, composition, recommendation, store
+from . import assets, codex, composition, enhance, recommendation, store
 from .media import crop_photo
 from .models import MIN_MOTION_SIDE, motion_fingerprint, stable_hash
 from .paths import job_path
@@ -45,6 +46,53 @@ class Pipeline:
     def update(self, job, state, message):
         job.state, job.message, job.error = state, message, None
         store.save(job)
+
+    async def enhance(self, job_id, indices=None):
+        """Remakes photos with Codex before analysis; each finished photo is saved as it lands."""
+        job = store.read(job_id)
+        if job.storyboard or job.generated or job.narration or job.result:
+            raise ValueError('고화질 변환은 대본 분석 전에만 할 수 있습니다.')
+        if indices is None:
+            indices = [i for i, p in enumerate(job.photos) if (p.get('enhanced') or {}).get('state') != 'done']
+        total, counts = len(indices), {'done': 0, 'failed': 0}
+        for index in indices:
+            job.photos[index]['enhancing'] = True
+        self.update(job, 'enhancing', f'고화질 변환 중 · 0/{total}장')
+        folder = job_path(job_id)
+        gate = asyncio.Semaphore(enhance.CONCURRENCY)
+
+        async def one(index):
+            async with gate:
+                photo = store.read(job_id).photos[index]
+                original = photo.get('original_file', photo['file'])
+                target = f'{Path(original).stem}-enhanced.jpg'
+                try:
+                    await enhance.enhance_photo(folder / original, folder / target)
+                    outcome = {'file': target}
+                except enhance.UsageLimit:
+                    raise
+                except enhance.EnhanceError as error:
+                    outcome = {'error': str(error)}
+                # No await between read and save, so concurrent photos never overwrite each other.
+                job = store.read(job_id)
+                enhance.record(job, index, **outcome)
+                counts['done' if 'file' in outcome else 'failed'] += 1
+                job.message = f'고화질 변환 중 · {counts["done"] + counts["failed"]}/{total}장'
+                store.save(job)
+
+        tasks = [asyncio.create_task(one(index)) for index in indices]
+        try:
+            await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            job = store.read(job_id)
+            enhance.settle(job)
+            store.save(job)
+            raise
+        self.update(store.read(job_id), 'uploaded',
+                    f'고화질 변환 완료 · 성공 {counts["done"]}장 · 실패 {counts["failed"]}장')
 
     async def analyze(self, job_id):
         job = store.read(job_id)
