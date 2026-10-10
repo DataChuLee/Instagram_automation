@@ -61,6 +61,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .preview-switch button{flex:1;font-size:12px;min-height:36px}
 .preview-switch button[aria-pressed=true]{background:var(--paper);border-radius:4px;color:var(--ink);box-shadow:0 1px 4px #202d2b10}
 .preview-note{font-size:12px;line-height:1.7;margin:12px 0}
+.photo-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:250px;margin:12px auto 0}
+.photo-nav button{min-height:34px;padding:6px 12px}
+.photo-nav span{font-size:11px;color:var(--muted);text-align:center}
 .preview-actions{margin-top:12px;gap:8px}
 .muted,.field,details,.style-row label,.range-field label,.voice-note{font-size:12px}
 .field input,.field select,.scene textarea,.motion-prompt textarea{font-size:13px}
@@ -120,3 +123,9 @@ summary{padding:6px 0;line-height:1.7;font-size:12px}
   .export-card .muted{font-size:11px}
   footer{font-size:10px;flex-wrap:wrap;line-height:1.7}
 }
+.model-list{display:grid;gap:6px;max-height:340px;overflow:auto;margin-top:8px}
+.model-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px 10px;border:1px solid #d9ded3;border-radius:8px;font-size:12px;cursor:pointer}
+.model-row.selected{border-color:#2f5d4a;background:#eef3ea}
+.model-row.unavailable{opacity:.55;cursor:not-allowed}
+.model-row small{display:block;color:#6b7065;font-size:11px}
+.model-row .model-credits{text-align:right;font-weight:700;white-space:nowrap}
