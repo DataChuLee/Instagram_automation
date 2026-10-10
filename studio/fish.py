@@ -113,6 +113,22 @@ class Fish:
         async with self.lock:
             async with self.session(interactive) as session:
                 response = await session.call_tool(name, args)
+        return self.parse(response)
+
+    async def calls(self, requests):
+        """Run read-only calls in one MCP session; each result is a value or the RuntimeError it raised."""
+        results = []
+        async with self.lock:
+            async with self.session() as session:
+                for name, args in requests:
+                    try:
+                        results.append(self.parse(await session.call_tool(name, args)))
+                    except RuntimeError as error:
+                        results.append(error)
+        return results
+
+    @staticmethod
+    def parse(response):
         # MCP 2.x uses snake_case attributes; 1.x used the wire field names.
         value = getattr(response, 'structured_content', getattr(response, 'structuredContent', None))
         if value is None:
