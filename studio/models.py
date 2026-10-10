@@ -157,6 +157,7 @@ class Job(BaseModel):
     photo_order: list[int] = Field(default_factory=list)
     target_count: int = Field(10, ge=1, le=60)
     candidates: list[dict] = Field(default_factory=list)
+    selection_reasons: dict[str, str] = Field(default_factory=dict)  # AI pick reason by photo sha256.
     assets: dict[str, dict] = Field(default_factory=dict)
     attempts: dict[str, int] = Field(default_factory=dict)
     versions: list[dict] = Field(default_factory=list)
