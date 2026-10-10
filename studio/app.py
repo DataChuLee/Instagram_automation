@@ -56,7 +56,7 @@ async def lifespan(app):
 
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver'])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver', '*.ts.net'])  # *.ts.net: 휴대폰 접속용 tailscale serve
 app.mount('/static', StaticFiles(directory=RESOURCES / 'studio/web'), name='static')
 
 
