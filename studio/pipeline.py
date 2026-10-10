@@ -118,11 +118,10 @@ class Pipeline:
         selection = await recommendation.choose(working, progress)
         composition.select(working, selection['ids'])
         working.composition_mode = 'ai'
-        working.storyboard = await codex.analyze(working)
+        # Stops at the pick so photos can be enhanced before the script is written from them.
         reasons = {r['id']: r['reason'] for r in selection['reasons']}
-        working.storyboard.selection_reasons = {str(i): reasons.get(p['id'], '') for i, p in enumerate(working.photos)}
-        assets.restore(working)
-        self.update(working, 'uploaded', 'AI 추천 구성을 준비했습니다. 선정 이유와 대본을 확인해 주세요.')
+        working.selection_reasons = {p['sha256']: reasons[i] for i, p in zip(selection['ids'], working.photos)}
+        self.update(working, 'uploaded', 'AI 추천 구성을 준비했습니다. 선정 이유를 확인하고 필요하면 고화질 변환 후 대본을 만들어 주세요.')
 
     async def quote(self, job_id, workspace):
         job = store.read(job_id)
