@@ -19,7 +19,7 @@
   결과를 가져와 1080×1920 JPEG로 저장한 뒤 세션 폴더를 지운다. 사진 dict는 `original_file`,
   `enhanced{file,state,active,error}`를 갖고 `file`만 바꿔 끼우므로 뒤 단계는 수정하지 않았다.
   v2 재구성(`composition.select`)도 후보에 복사한 `enhanced`로 선택을 이어받는다.
-- `POST /api/jobs/{id}/enhance`(4장 동시, 사진별 저장, 한도 시 중단), `POST /api/jobs/{id}/photos/{i}/source`.
+- `POST /api/jobs/{id}/enhance`(10장 동시, 사진별 저장, 한도 시 중단), `POST /api/jobs/{id}/photos/{i}/source`.
   상태 `enhancing`, 재시작 시 `uploaded`로 복구. UI: 변환 버튼, HD 배지, HD/원본 토글, ↻ 다시 변환.
 - 전역 Python은 fastapi 0.112/starlette 1.6 불일치로 `test_app` 등 import가 실패한다(기존 문제).
   lock 파일로 만든 별도 venv에서 128개 테스트 통과. 가짜 Codex 브라우저 검증(진행·배지·토글·실패·모바일) 통과.
