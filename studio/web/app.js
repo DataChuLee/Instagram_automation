@@ -12,10 +12,8 @@ let collection = null, collectionSelected = new Set(), sourceBusy = false, polli
 const exportCache = new Map();
 const busyStates = new Set(['analyzing','recommending','quoting','generating','rendering','previewing','enhancing']);
 const numericControls = ['fontSize','posY','posX'];
-const motionPromptCache = new Map();
 let candidateSelected = new Set(), dirtyStyle = false, modelComparison = null;
 let previewMode = 'photo', connectionState = null, uiError = null;
-const defaultMotionPrompt = 'Slow, subtle camera movement. Preserve the original architecture, furniture, colors, and lighting. Do not add or remove objects or people.';
 async function api(path, body, binary=false) {
   const options = body === undefined ? {} : {method:'POST',headers:{'X-Studio-Token':token},body:body instanceof FormData ? body : JSON.stringify(body)};
   if(body !== undefined && !(body instanceof FormData)) options.headers['Content-Type']='application/json';
@@ -117,41 +115,30 @@ function drawScript(){
     const body=document.createElement('div');body.className='scene-body';
     const text=document.createElement('textarea');text.value=scene.text;text.maxLength=160;text.disabled=planLocked();text.setAttribute('aria-label',`${index+1}번 장면 대본`);
     text.oninput=()=>{scene.text=text.value;planChanged();if(scene.photos.includes(selectedPhoto)){$('captionText').value=text.value;queuePreview();}};
-    const info=document.createElement('small');info.textContent='사진 '+scene.photos.map(n=>n+1).join(', ')+' · 음성과 화면 자막에 같은 문장 사용'+(job.storyboard.motion.some(m=>scene.photos.includes(m.photo))?' · 움직임 포함':'');
+    const info=document.createElement('small');info.textContent='사진 '+scene.photos.map(n=>n+1).join(', ')+' · 음성과 화면 자막에 같은 문장 사용'+(job.storyboard.motion.some(m=>m.photos.some(p=>scene.photos.includes(p)))?' · 움직임 포함':'');
     body.append(text,info,mediaControls('voice',index));row.append(number,body);panel.append(row);
   });drawMotion();
 }
 function drawMotion(){
-  const grid=$('motionGrid'),prompts=$('motionPrompts');grid.replaceChildren();prompts.replaceChildren();
+  const prompts=$('motionPrompts');prompts.replaceChildren();
   $('savePlan').hidden=!job?.storyboard;
-  if(!job?.storyboard){$('motionCount').textContent='0장 선택';return;}
-  const selected=new Map(job.storyboard.motion.map(m=>[m.photo,m]));
-  job.photos.forEach((photo,index)=>{
-    const label=document.createElement('label');label.className='motion-photo';
-    const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=selected.has(index);checkbox.dataset.photo=index;checkbox.setAttribute('aria-label',`${index+1}번 사진 움직임 선택`);
-    checkbox.onchange=()=>{
-      if(planLocked()){checkbox.checked=selected.has(index);return;}
-      if(checkbox.checked){job.storyboard.motion.push({photo:index,prompt:motionPromptCache.get(index)||job.storyboard.motion_recommendations?.find(r=>r.photo===index)?.prompt||defaultMotionPrompt});}
-      else{const previous=job.storyboard.motion.find(m=>m.photo===index);motionPromptCache.set(index,previous.prompt);job.storyboard.motion=job.storyboard.motion.filter(m=>m.photo!==index);}
-      job.storyboard.motion.sort((a,b)=>a.photo-b.photo);dirtyScript=true;drawScript();drawStatus();
-    };
-    const img=document.createElement('img');img.src=`/api/jobs/${job.id}/files/${photo.file}`;img.alt=photo.name;img.loading='lazy';
-    const text=document.createElement('span');text.textContent=`사진 ${index+1}`;const rec=job.storyboard.motion_recommendations?.find(r=>r.photo===index);if(rec){const why=document.createElement('small');why.textContent=(rec.recommended?'AI 추천 · ':'정지 권장 · ')+rec.reason;label.append(why);}label.append(img,checkbox,text);grid.append(label);
-  });
-  for(const motion of job.storyboard.motion){
-    const label=document.createElement('label');label.className='motion-prompt';label.textContent=`사진 ${motion.photo+1} · 움직임 프롬프트`;
-    const input=document.createElement('textarea');input.value=motion.prompt;input.maxLength=2000;input.dataset.photo=motion.photo;input.setAttribute('aria-label',`${motion.photo+1}번 사진 움직임 프롬프트`);
+  if(!job?.storyboard){$('motionCount').textContent='클립 0개';return;}
+  job.storyboard.motion.forEach((motion,index)=>{
+    const label=document.createElement('label');label.className='motion-prompt';label.textContent=`클립 ${index+1} · 사진 ${motion.photos.map(n=>n+1).join(', ')} · ${motion.seconds}초`;
+    const strip=document.createElement('div');strip.className='motion-clip-photos';
+    for(const photo of motion.photos){const img=document.createElement('img');img.src=`/api/jobs/${job.id}/files/${job.photos[photo].file}`;img.alt=job.photos[photo].name;img.loading='lazy';strip.append(img);}
+    const input=document.createElement('textarea');input.value=motion.prompt;input.maxLength=2000;input.dataset.photo=motion.photo;input.setAttribute('aria-label',`클립 ${index+1} 움직임 프롬프트`);
     const info=document.createElement('small');
     const update=()=>{const valid=motion.prompt.trim().length>0&&motion.prompt.trim().length<=2000;input.setAttribute('aria-invalid',String(!valid));info.textContent=valid?`${motion.prompt.trim().length} / 2,000자 · 한국어·영어 입력 가능`:'움직임을 설명하는 프롬프트를 1~2,000자로 입력하세요.';info.className=valid?'muted':'input-error';};
-    input.oninput=()=>{motion.prompt=input.value;motionPromptCache.set(motion.photo,input.value);update();planChanged();};update();const rec=job.storyboard.motion_recommendations?.find(r=>r.photo===motion.photo);if(rec?.explanation){const why=document.createElement('p');why.className='muted';why.textContent=rec.explanation;label.append(why);}label.append(input,info,mediaControls('motion',motion.photo));prompts.append(label);
-  }
+    input.oninput=()=>{motion.prompt=input.value;update();planChanged();};update();
+    label.append(strip,input,info,mediaControls('motion',motion.photo));prompts.append(label);
+  });
   motionControls();
 }
 function motionControls(){
   const locked=planLocked(),count=job?.storyboard?.motion.length||0;
-  $('motionCount').textContent=`${count}장 선택`;
-  $('motionHelp').textContent=!job?.storyboard?'사진 분석 후 움직일 사진을 직접 고르고 프롬프트를 입력할 수 있어요.':locked?'제출한 생성 작업이 끝난 뒤 수정할 수 있어요.':count?'선택한 사진만 움직입니다. 사진마다 원하는 움직임을 입력하세요.':'선택한 움직임 사진이 없어요. 모든 사진을 정지 사진으로 사용합니다.';
-  for(const checkbox of $('motionGrid').querySelectorAll('input'))checkbox.disabled=locked;
+  $('motionCount').textContent=`클립 ${count}개`;
+  $('motionHelp').textContent=!job?.storyboard?'사진 분석 후 사용 사진을 3~4장씩 묶은 클립과 프롬프트가 여기에 나타나요.':locked?'제출한 생성 작업이 끝난 뒤 수정할 수 있어요.':count?'사용 사진을 모두 3~4장씩 묶어 클립으로 움직입니다. 클립마다 프롬프트를 고칠 수 있어요.':'움직임 클립이 없어요. 사진 분석을 다시 하면 클립이 만들어져요.';
   for(const input of document.querySelectorAll('#motionPrompts textarea, #storyboard textarea'))input.disabled=locked;
   $('savePlan').disabled=locked||!planValid()||!numericValid();
   $('planNotice').textContent=dirtyScript?'변경 사항을 저장하거나 견적을 다시 확인해 주세요. 기존 견적은 사용할 수 없어요.':'';
@@ -223,7 +210,7 @@ async function selectJob(id){
 }
 async function loadJob(id){
   const next=await api('/api/jobs/'+id);
-  resetPreview();job=next;dirtyScript=dirtyStyle=false;candidateSelected.clear();motionPromptCache.clear();
+  resetPreview();job=next;dirtyScript=dirtyStyle=false;candidateSelected.clear();
   selectedPhoto=job.photo_order?.[0]??job.storyboard?.scenes[0]?.photos[0]??0;previewMode=job.preview||job.result?'video':'photo';
   loadStyle();const scene=job.storyboard?.scenes.find(s=>s.photos.includes(selectedPhoto));if(scene)$('captionText').value=scene.text;await updatePreview();
 }
@@ -308,7 +295,7 @@ for(const id of numericControls){
 }
 $('newJob').onclick=()=>{
   if(!confirmDiscard())return;
-  resetPreview();job=null;dirtyScript=dirtyStyle=false;uiError=null;candidateSelected.clear();motionPromptCache.clear();
+  resetPreview();job=null;dirtyScript=dirtyStyle=false;uiError=null;candidateSelected.clear();
   for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','captionText'])$(id).value=$(id).defaultValue;
   $('speed').value='1';for(const id of numericControls){$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}
   $('files').value='';motionOptions();updateOutputs();drawPhotos();drawScript();drawStatus();
