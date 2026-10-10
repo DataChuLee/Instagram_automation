@@ -88,6 +88,31 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
             await self.pipeline.analyze(self.job.id)
         self.assertEqual(store.read(self.job.id).state, 'uploaded')
 
+    async def test_multi_photo_clip_is_quoted_as_reference_video_of_its_length(self):
+        from PIL import Image
+        self.job.photos = [{'sha256': str(i), 'file': f'photo-{i}.jpg'} for i in range(3)]
+        for i in range(3):
+            Image.new('RGB', (360, 640), (i * 80, 20, 50)).save(self.folder / f'photo-{i}.jpg')
+        self.job.storyboard = Storyboard(scenes=[{'photos': [0, 1, 2], 'text': '숙소'}],
+            motion=[{'photo': 0, 'photos': [0, 1, 2], 'seconds': 5, 'prompt': 'Shot 1, Shot 2, Shot 3'}])
+        self.job.narration = {}
+        store.save(self.job)
+        requests = []
+        async def call(name, args):
+            if name == 'get_media_model':
+                return {'capabilities': {'i2v_ref': {'parameter_schema': {'properties': {
+                    'resolution': {'enum': ['720p']}, 'aspect_ratio': {'enum': ['9:16']}, 'duration': {'enum': ['4s', '5s']}}}}}}
+            requests.append(args)
+            return {'can_generate': True, 'credits': 3600, 'pricing_version': 'test', 'balance': 10000}
+        self.fish.call.side_effect = call
+        self.fish.upload.side_effect = ['key-0', 'key-1', 'key-2']
+        self.drama.quote.return_value = {'credits': 2}
+        await self.pipeline.quote(self.job.id, 'test-workspace')
+        self.assertEqual(requests[0]['inputs'], [{'role': 'ref', 'object_key': f'key-{i}'} for i in range(3)])
+        self.assertEqual(requests[0]['parameters']['duration'], '5s')
+        self.assertNotIn('operation', requests[0])
+        self.assertEqual(store.read(self.job.id).quote['total'], 3602)
+
     async def test_quote_uses_only_selected_photos_and_exact_prompts(self):
         from PIL import Image
         self.job.photos = [{'sha256': str(i), 'file': f'photo-{i}.jpg'} for i in range(3)]
@@ -100,7 +125,7 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         async def call(name, args):
             if name == 'get_media_model':
                 return {'capabilities': {'i2v': {'parameter_schema': {'properties': {
-                    'resolution': {'enum': ['1080p']}, 'aspect_ratio': {'enum': ['9:16']}}}}}}
+                    'resolution': {'enum': ['720p', '1080p']}, 'aspect_ratio': {'enum': ['9:16']}, 'duration': {'enum': ['4s']}}}}}}
             self.assertEqual(name, 'estimate_video_generation')
             return {'can_generate': True, 'credits': 3, 'pricing_version': 'test', 'balance': 100}
         self.fish.call.side_effect = call
