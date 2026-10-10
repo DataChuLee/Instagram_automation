@@ -32,6 +32,25 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         self.patch2.stop()
         self.temp.cleanup()
 
+    async def test_recommend_stops_before_script_so_photos_can_be_enhanced(self):
+        job = Job(id='c'*32, workflow_version=2, target_count=2,
+                  candidates=[{'id': i, 'file': f'{i}.jpg'} for i in 'abc'])
+        store.save(job)
+        selection = {'ids': ['c', 'a'], 'reasons': [{'id': 'a', 'reason': '객실'}, {'id': 'c', 'reason': '수영장'}]}
+        def select(working, ids):
+            working.photos = [{'id': i, 'sha256': i, 'file': f'{i}.jpg'} for i in ids]
+            working.photo_order = [0, 1]
+            working.storyboard = None
+        with patch('studio.pipeline.recommendation.choose', AsyncMock(return_value=selection)),              patch('studio.pipeline.composition.select', side_effect=select),              patch('studio.pipeline.codex.analyze', AsyncMock()) as analyze,              patch('studio.pipeline.enhance.enhance_photo', AsyncMock()) as remake:
+            await self.pipeline.recommend(job.id)
+            saved = store.read(job.id)
+            self.assertIsNone(saved.storyboard)
+            self.assertEqual(saved.composition_mode, 'ai')
+            self.assertEqual(saved.selection_reasons, {'c': '수영장', 'a': '객실'})
+            await self.pipeline.enhance(job.id)
+        analyze.assert_not_called()
+        self.assertEqual(remake.await_count, 2)
+
     async def test_uncertain_voice_submission_is_never_repeated(self):
         await self.pipeline.guarded(self.job.id, self.pipeline.generate)
         self.drama.generate.assert_not_called()
