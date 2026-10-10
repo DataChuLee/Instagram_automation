@@ -1,47 +1,119 @@
-# 숙소 세로 영상 · Stay Studio
+# Stay Studio · 숙소 세로 영상 자동 제작
 
-사진을 넣어 대본·음성·움직임·자막을 만드는 로컬 Windows 프로그램은 `studio/`에 있습니다.
-사진 첨부와 함께 여기어때 국내 숙소 링크에서 사진을 수집하고 골라 추가할 수 있습니다.
-완성본 MP4, 자막·음성 없는 MP4, 대본 TXT/자막 SRT, 내레이션 MP3를 각각 저장합니다.
-친구에게 전달할 폴더는 `dist/StayStudio`, 압축 파일은 `dist/StayStudio-Windows.zip`입니다.
-실행 및 로그인 방법은 [친구 PC 사용법](docs/친구-PC-사용법.md)을 보세요.
+숙소 사진만 넣으면 **대본 · 내레이션 · AI 움직임 · 자막**이 들어간 인스타그램용 세로 영상(1080×1920)을
+만들어 주는 Windows 로컬 프로그램입니다. 사진을 직접 첨부하거나 여기어때 숙소 링크에서 가져올 수 있고,
+유료 생성 전에 무료 견적을 보여 주고 승인을 받은 뒤 만듭니다.
 
-개발 실행 및 검증:
+## 주요 기능
+
+- **사진 입력**: 파일 첨부, 또는 여기어때 국내 숙소 상세 링크에서 사진을 수집해 골라 추가
+- **고화질 변환 · 인물 제거**: Codex 이미지 생성으로 사진을 9:16 고화질로 다시 만들고 사람·모자이크 제거, 화사하게 보정 (사진별 HD/원본 전환)
+- **AI 구성 추천**: 후보 사진 중에서 장수·순서·대본·움직임을 함께 추천하거나, 직접 순서를 정해 구성
+- **대본 · 자막 편집**: 대본이 그대로 내레이션과 화면 자막이 됨. 글꼴·크기·위치·색상·음성 속도 조절
+- **AI 움직임**: 선택한 사진을 Fish MCP(Seedance 2.0 등)로 짧은 영상 클립으로 생성, 사진별 프롬프트 편집
+- **내레이션**: Fish Story Studio의 Drama3(`drama-3-preview`) + 일반여성2 목소리로 고정
+- **견적 → 승인 → 생성**: 움직임·음성의 크레딧 견적을 먼저 확인하고, 모델·목소리·가격이 바뀌면 생성 중단
+- **재합성**: 자막·속도·사진 순서만 바꿀 때는 기존 음성·클립을 재사용해 크레딧 없이 다시 합성
+- **이어서 하기**: 작업과 생성 ID를 저장해 프로그램을 다시 열어도 이어서 진행, 유료 요청을 반복하지 않음
+
+## 동작 흐름
+
+```
+사진 첨부 / 링크 수집
+   → (선택) 고화질 변환
+   → 사진 분석 & 대본 작성 (Codex)
+   → 대본·자막·움직임 편집
+   → 크레딧 견적 확인 & 승인
+   → 움직임 클립 + 내레이션 생성 (Fish MCP)
+   → 로컬 합성 (FFmpeg) → 미리보기 → 내보내기
+```
+
+## 결과물
+
+| 파일 | 내용 |
+| --- | --- |
+| 완성본 MP4 | 자막 · 내레이션 포함, 1080×1920 / 30fps / H.264 |
+| 영상 MP4 | 자막 · 음성 없는 영상 |
+| 자막대본 | 대본 TXT + 시간 자막 SRT |
+| 음성파일 | 영상 순서·속도에 맞춘 내레이션 MP3 |
+
+## 필요한 것
+
+- Windows 10/11 64비트, 인터넷 연결
+- **ChatGPT 구독 계정** (Codex 로그인 — 사진 분석·대본·고화질 변환)
+- **Fish Audio 패키지 크레딧** (Fish MCP OAuth 로그인 — 움직임·음성 생성)
+
+개발자 API 키는 쓰지 않습니다. 로그인은 각 PC에서 직접 하며, Fish 토큰은 Windows DPAPI로 암호화해 저장합니다.
+
+## 사용하기 (배포본)
+
+1. `dist/StayStudio-Windows.zip`을 압축 해제하고 `StayStudio.exe` 실행
+2. 브라우저에 `http://127.0.0.1:8765`가 열리면 **계정 연결**에서 Codex와 Fish MCP 연결
+3. 사진을 넣고 화면 상단의 제작 순서를 따라 진행
+
+자세한 사용법은 [친구 PC 사용법](docs/친구-PC-사용법.md)을 보세요.
+
+## 개발 환경
+
+Python 3.11 기준입니다.
 
 ```powershell
 python -m pip install --target .tools/studio-python -r requirements-studio.txt
-python scripts/install_browser.py
-python launch.py
-python scripts/test_studio.py
-python scripts/build_windows.py
+python scripts/install_browser.py     # Playwright 브라우저 설치
+python launch.py                      # 서버 실행 + 브라우저 열기 (기본 포트 8765)
+python scripts/test_studio.py         # 테스트
+python scripts/build_windows.py       # dist/StayStudio, dist/StayStudio-Windows.zip 생성
 ```
 
-새 프로그램은 기존 결과물을 덮어쓰지 않습니다. 개발 중 작업은 `.local/jobs`에 저장합니다.
-링크 수집 결과는 `.local/collections`에 보관합니다. 같은 링크를 다시 수집하면 정상 저장된 사진을 재사용합니다.
-사진 구성은 분석 전에만 변경하며, 기존 작업의 새 다운로드 파일은 저장된 미디어로 다시 합성해 만듭니다.
-최종 출력은 1080×1920 / 30fps, 자막은 페이퍼로지 Bold와 Y=13 기본값입니다.
-움직임과 Drama3 음성은 같은 Fish MCP 연결과 패키지 크레딧으로 생성합니다.
-음성은 Drama3 (`drama-3-preview`)와 일반여성2로 고정하며 별도 음성 로그인은 없습니다.
-Story Studio의 무료 견적을 확인하고 승인한 뒤 생성합니다. 모델·목소리·가격이
-변경되면 생성을 중단합니다. 실제 계정 생성 검증 상태는
-[진행 기록](docs/superpowers/plans/2026-10-08-local-video-studio-progress.md)에 남깁니다.
+`launch.py --no-browser --port 8766`처럼 브라우저 자동 열기를 끄거나 포트를 바꿀 수 있습니다.
 
-## 기존 17장 영상
+## 프로젝트 구조
 
-이번 결과물: `output/stay_reel.mp4`. Fish Audio의 일반여성2 목소리와 `Data/Test_Data` 사진 17장을 사용한다. 내레이션·흰색 중앙 자막·사진 확대 효과를 포함한다.
+```
+launch.py              실행 진입점 (127.0.0.1 전용, EXE 진입점 겸용)
+studio/
+  app.py               FastAPI 서버와 API
+  pipeline.py          분석 → 견적 → 생성 → 합성 작업 흐름
+  codex.py             Codex 로그인·사진 분석·대본 작성
+  enhance.py           Codex 이미지 생성으로 고화질 변환
+  composition.py       사진 구성·AI 추천 구성
+  recommendation.py    움직임 추천
+  fish.py, drama.py    Fish MCP 연결, 움직임·Drama3 음성 생성
+  collector.py, yeogi.py  여기어때 링크 사진 수집
+  render.py, media.py  크롭·자막·FFmpeg 합성
+  store.py, paths.py   작업 저장과 경로
+  skills/              대본·고화질 변환 프롬프트
+  web/                 화면 (index.html, app.js, style.css)
+scripts/               빌드·설치·검사(check_*)·테스트 스크립트
+assets/fonts/          페이퍼로지 Bold (OFL)
+docs/                  사용법, 설계·진행 기록
+Data/                  테스트용 사진·참고 영상
+```
 
-- `output/storyboard.json`: 장면별 대본, 사진 인덱스, 목소리 ID, 생성 기록과 타임라인.
-- `output/stay_reel.srt`: 자막 파일.
-- `output/preview.jpg`: 실제 출력 영상에서 추출한 장면 미리보기.
-- `output/verification.json`: 전체 디코딩 및 형식 검증 결과.
+## 데이터 저장 위치
 
-Python 3.11, Pillow와 프로젝트 `.tools/python`의 imageio-ffmpeg를 사용한다. FFmpeg 배포 방식은 https://github.com/imageio/imageio-ffmpeg 를 따른다.
+| 구분 | 개발 실행 | 배포본 |
+| --- | --- | --- |
+| 작업 | `.local/jobs` | `%LOCALAPPDATA%\StayStudio\jobs` |
+| 링크 수집 | `.local/collections` | `%LOCALAPPDATA%\StayStudio\collections` |
 
-저장된 대본과 음성으로 다시 합성하려면 프로젝트 폴더에서 실행한다:
+같은 링크를 다시 수집하면 정상 저장된 사진을 재사용합니다. 새 작업은 기존 결과물을 덮어쓰지 않습니다.
+
+## 제한 사항
+
+- 링크 수집은 여기어때 **국내 숙소 상세 페이지**만 지원합니다.
+- 사진은 최대 60장, 장당 20MB, 짧은 변 300px 이상이어야 합니다.
+- 고화질 변환은 가로로 넓은 사진의 위아래를 AI가 새로 그리므로 실제 숙소와 다르지 않은지 확인이 필요합니다.
+- 사진과 대본은 분석을 위해 Codex로, 움직임용 사진은 Fish로 전송됩니다. 화면과 합성은 내 PC에서 실행됩니다.
+
+
+## 참고: 첫 시범 영상 (17장)
+
+프로그램 이전에 `Data/Test_Data` 사진 17장으로 만든 시범 영상이 `output/stay_reel.mp4`에 있습니다
+(대본·타임라인 `output/storyboard.json`, 자막 `output/stay_reel.srt`, 검증 결과 `output/verification.json`).
+저장된 대본과 음성으로 다시 합성하려면 다음을 실행합니다. Fish 생성 호출은 하지 않습니다.
 
 ```powershell
-& 'C:/Users/qasd1/.pyenv/pyenv-win/versions/3.11.9/python.exe' scripts/render_video.py
-& 'C:/Users/qasd1/.pyenv/pyenv-win/versions/3.11.9/python.exe' scripts/verify_video.py
+python scripts/render_video.py
+python scripts/verify_video.py
 ```
-
-재합성은 Fish 생성 호출을 하지 않으며 기존 출력 파일을 갱신한다. 새 대본은 별도 음성 생성이 필요하다. 새로운 사진 세트는 장면 목록과 사진 인덱스를 함께 수정해야 한다. 렌더러는 현재 Test_Data 입력에 맞춰져 있으며 무인 대본 생성·예약 실행 기능은 포함하지 않는다.
