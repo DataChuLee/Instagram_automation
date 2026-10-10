@@ -36,7 +36,7 @@ class StudioUXTests(unittest.TestCase):
                 Image.new('RGB', (600, 900), color).save(folder / f'p{i}.jpg')
                 photos.append({'file': f'p{i}.jpg', 'name': f'사진 {i+1}', 'sha256': f'{identifier}-{i}'})
             record = Job(id=identifier, workflow_version=2, photos=photos, photo_order=[0, 1],
-                storyboard=Storyboard(scenes=[{'photos': [i], 'text': f'대본 {i+1}', 'caption_text': f'자막 {i+1}'} for i in range(2)]))
+                storyboard=Storyboard(scenes=[{'photos': [i], 'text': f'대본 {i+1}'} for i in range(2)]))
             (folder / 'job.json').write_text(record.model_dump_json(), encoding='utf-8')
             cls.original_jobs[identifier] = record.model_dump_json()
         with socket.socket() as sock:
@@ -98,6 +98,23 @@ class StudioUXTests(unittest.TestCase):
         self.assertEqual(dialogs, ['confirm'])
         self.assertEqual(field.input_value(), '아직 저장하지 않은 이야기')
 
+    def test_preview_steps_between_photos_with_buttons_and_keys(self):
+        position = self.page.locator('#photoPosition')
+        self.page.wait_for_function('document.querySelector("#photoPosition").textContent.includes("사진 1 / 2")')
+        self.assertEqual(position.text_content(), '장면 1 · 사진 1 / 2')
+        self.assertTrue(self.page.locator('#prevPhoto').is_disabled())
+        self.page.locator('#nextPhoto').click()
+        self.assertEqual(position.text_content(), '장면 2 · 사진 2 / 2')
+        self.assertEqual(self.page.locator('#captionText').input_value(), '대본 2')
+        self.assertTrue(self.page.locator('#nextPhoto').is_disabled())
+        self.page.locator('#captionText').focus()
+        self.page.keyboard.press('ArrowLeft')
+        self.assertEqual(position.text_content(), '장면 2 · 사진 2 / 2')
+        self.page.locator('#captionText').blur()
+        self.page.keyboard.press('ArrowLeft')
+        self.assertEqual(position.text_content(), '장면 1 · 사진 1 / 2')
+        self.assertEqual(self.page.locator('#captionText').input_value(), '대본 1')
+
     def test_home_navigation_warns_once_and_cancel_keeps_edits(self):
         self.page.locator('#fontSizeInput').fill('79')
         dialogs = self.dismiss_dialogs()
@@ -118,7 +135,7 @@ class StudioUXTests(unittest.TestCase):
         self.page.locator('#saveStyle').click()
         self.page.wait_for_timeout(400)
         saved = self.page.request.get(self.base + '/api/jobs/' + self.ids[0]).json()
-        self.assertEqual(saved['storyboard']['scenes'][0]['caption_text'], '새 화면 자막')
+        self.assertEqual(saved['storyboard']['scenes'][0]['text'], '새 화면 자막')
         self.assertEqual(saved['options']['caption']['font_size'], 72)
         self.assertFalse(self.page.evaluate('dirtyScript || dirtyStyle'))
 
@@ -200,7 +217,7 @@ class StudioUXTests(unittest.TestCase):
         self.page.wait_for_function('old=>{const image=document.querySelector("#preview");return !image.hidden&&image.src!==old&&image.naturalWidth===1080}', arg=previous)
         self.assertTrue(self.page.locator('#preview').is_visible())
         self.assertFalse(self.page.locator('#video').is_visible())
-        self.assertEqual(self.page.locator('#captionText').input_value(), '자막 2')
+        self.assertEqual(self.page.locator('#captionText').input_value(), '대본 2')
 
     def test_status_and_next_action_remain_visible_while_scrolling(self):
         self.assertEqual(self.page.locator('#nextAction').count(), 1)
