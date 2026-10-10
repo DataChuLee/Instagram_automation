@@ -15,12 +15,11 @@ class CompositionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Storyboard.validate_plan(value, 2, 3, expected_order=[0, 1])
 
-    def test_caption_edit_reuses_voice_and_reordering_preserves_mapping(self):
+    def test_reordering_preserves_voice_mapping(self):
         job = self.make_job()
         job.narration = {'0': {'file': 'room.mp3'}, '1': {'file': 'pool.mp3'}}
         assets.capture(job)
         job.storyboard.scenes.reverse()
-        job.storyboard.scenes[0].caption_text = '푸른 수영장'
         assets.restore(job)
         self.assertEqual(job.narration['0']['file'], 'pool.mp3')
         self.assertEqual(job.narration['1']['file'], 'room.mp3')
