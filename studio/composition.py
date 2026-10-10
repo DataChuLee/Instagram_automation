@@ -47,6 +47,26 @@ def select(job, ids):
     job.workflow_version = 2
 
 
+def remove(job, ids):
+    """Drop candidates; photos in the active composition leave it too, keeping the remaining order."""
+    if not isinstance(ids, list) or not ids or any(not isinstance(i, str) for i in ids):
+        raise ValueError('제거할 후보 사진을 선택해 주세요.')
+    removed = set(ids)
+    job.candidates = [c for c in recommendation.candidates(job) if c['id'] not in removed]
+    order = job.photo_order or list(range(len(job.photos)))
+    if not removed & {p['sha256'] for p in job.photos}:
+        return
+    remaining = [job.photos[i]['sha256'] for i in order if job.photos[i]['sha256'] not in removed]
+    if remaining:
+        select(job, remaining)
+        return
+    assets.capture(job)
+    assets.checkpoint(job)
+    job.photos, job.photo_order, job.storyboard = [], [], None
+    assets.restore(job)
+    assets.invalidate(job)
+
+
 def reorder(job, order):
     if not isinstance(order, list) or any(type(i) is not int for i in order) or sorted(order) != list(range(len(job.photos))):
         raise ValueError('사진 순서가 올바르지 않습니다.')
