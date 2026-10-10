@@ -13,7 +13,7 @@ from .media import crop_photo
 
 SKILL = codex.SKILLS / 'SKILL_ENHANCE.md'
 TIMEOUT = 300  # One photo took 40-90 s in the 2026-10-10 test.
-CONCURRENCY = 4
+CONCURRENCY = 10  # A typical reel's photos all run at once; limits only the pace, not total Codex usage.
 
 
 class EnhanceError(RuntimeError):
