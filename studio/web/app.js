@@ -75,7 +75,7 @@ function drawPhotos(){
     const image=document.createElement('img');image.src=`/api/jobs/${job.id}/files/${photo.file}`;image.alt=photo.name;image.loading='lazy';const number=document.createElement('span');number.textContent=String(position+1).padStart(2,'0');button.append(image,number);
     button.onclick=action(()=>selectPhoto(index));
     const controls=document.createElement('div');controls.className='photo-moves';for(const [label,delta] of [['←',-1],['→',1]]){const move=document.createElement('button');move.textContent=label;move.setAttribute('aria-label',`${position+1}번 사진 ${delta<0?'앞':'뒤'}으로 이동`);move.disabled=planLocked()||position+delta<0||position+delta>=order.length;move.onclick=action(()=>movePhoto(position,position+delta));controls.append(move);}card.append(button,controls);enhanceControls(card,button,photo,index,position);
-    const reason=job.storyboard?.selection_reasons?.[String(index)];if(reason){const details=document.createElement('small');details.textContent=reason;card.append(details);}grid.append(card);
+    const reason=job.selection_reasons?.[photo.sha256]||job.storyboard?.selection_reasons?.[String(index)];if(reason){const details=document.createElement('small');details.textContent=reason;card.append(details);}grid.append(card);
   });drawCandidates();loadCrop();drawPhotoNav();
 }
 function enhanceLocked(){return Boolean(!job||sourceBusy||busyStates.has(job.state)||job.pending_media||job.storyboard||Object.keys(job.generated).length||Object.keys(job.narration).length||job.result);}
@@ -470,7 +470,7 @@ function drawWorkflow(busy){
   let target,label,activate=true;
   if(!job){target='files';label='사진 추가하기 +';}
   else if(!job.storyboard&&connectionState&&!connectionState.codex){target='settingsButton';label='대본 생성 계정 연결';}
-  else if(!job.storyboard){target=compositionMode()==='ai'?'recommend':'analyze';label=compositionMode()==='ai'?'AI 추천 구성 만들기':'대본 만들기 →';}
+  else if(!job.storyboard){const pick=compositionMode()==='ai'&&!Object.keys(job.selection_reasons||{}).length;target=pick?'recommend':'analyze';label=pick?'AI 추천 구성 만들기':'대본 만들기 →';}
   else if(!numericValid()||!planValid()){target=!numericValid()?numericControls.find(id=>!$(id+'Input').validity.valid)+'Input':job.storyboard.scenes.some(s=>!s.text.trim())?'storyboard':'motionEditor';label='편집 내용 확인하기';activate=false;}
   else if(dirty){target='saveEdits';label='변경 사항 저장';}
   else if(job.state==='awaiting_approval'&&job.quote){target='quoteBox';label='견적 확인하고 승인하기';activate=false;}
