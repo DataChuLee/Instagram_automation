@@ -5,6 +5,7 @@ import re
 import subprocess
 import wave
 import shutil
+from array import array
 from pathlib import Path
 
 from .media import allocate_frames, caption_image, caption_segments, crop_photo, cut_zoom, srt_time
@@ -15,6 +16,7 @@ from .paths import RESOURCES, job_path
 # Drop leading silence and shrink every pause (mid-sentence and trailing) to 0.05s so speech runs back to back.
 TIGHTEN = ('silenceremove=start_periods=1:start_threshold=-40dB:start_silence=0'
            ':stop_periods=-1:stop_duration=0.1:stop_threshold=-40dB:stop_silence=0.05')
+CAPTION_LEAD = 0.1  # Seconds a mid-scene caption appears before its estimated spoken start.
 
 
 def ffmpeg():
@@ -70,6 +72,17 @@ def shot_bounds(path, shots):
     return list(zip(edges, edges[1:]))
 
 
+def speech_end(path, threshold=328):
+    """Seconds until the last sample louder than about -40dBFS in a 16-bit wav."""
+    with wave.open(str(path)) as source:
+        rate, channels = source.getframerate(), source.getnchannels()
+        samples = array('h', source.readframes(source.getnframes()))
+    for index in range(len(samples) - 1, -1, -1):
+        if abs(samples[index]) >= threshold:
+            return (index // channels + 1) / rate
+    return 0.0
+
+
 def verify(path, decode=True):
     if video_size(path) != (1080, 1920):
         raise RuntimeError('출력 영상이 1080×1920이 아닙니다.')
@@ -113,14 +126,18 @@ def render(job, progress=lambda message: None, preview=False):
         segments = caption_segments(scene.text, job.options.caption)
         scene_start = offset
         caption_paths = []
-        weights = [max(len(text), 1) for text in segments]
+        # Cues follow the spoken span, not the padded scene, and split it by syllables, which track speech time.
+        spoken = min(speech_end(adjusted), scene_duration) or scene_duration
+        weights = [max(len(re.sub(r'\W', '', text)), 1) for text in segments]
+        # Cues inside a scene switch slightly early: a late caption reads as lag, an early one does not.
+        cut = lambda boundary: max(spoken * boundary / sum(weights) - CAPTION_LEAD, 0)
         boundary = 0
         for part, text in enumerate(segments):
             caption = export / f'caption-{scene_index:03}-{part:03}.png'
             caption_image(text, job.options.caption).save(caption)
-            start = scene_duration * boundary / sum(weights)
+            start = cut(boundary) if part else 0
             boundary += weights[part]
-            end = scene_duration * boundary / sum(weights)
+            end = cut(boundary) if part < len(segments) - 1 else scene_duration
             caption_paths.append((caption, start, end))
             subtitles.append(f'{len(subtitles)+1}\n{srt_time(offset+start)} --> {srt_time(offset+end)}\n{text}\n')
         padded = export / f'padded-{scene_index:03}.wav'
