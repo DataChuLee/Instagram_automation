@@ -94,7 +94,8 @@ try:
         'scenes': [{'photos': list(range(7)), 'text': '숙소에서 보내는 하루'}],
         'motion': [{'photo': i, 'prompt': '  물결이 잔잔하게 움직여요  '} for i in range(7)]})
     assert len(edited['storyboard']['motion']) == 7
-    assert edited['storyboard']['motion'][-1] == {'photo': 6, 'prompt': '물결이 잔잔하게 움직여요'}
+    last = edited['storyboard']['motion'][-1]
+    assert (last['photo'], last['prompt']) == (6, '물결이 잔잔하게 움직여요'), last
     assert edited['quote'] is None and edited['state'] == 'uploaded'
     api(f"/api/jobs/{job['id']}/style", {'max_motion': 7})
     api(f"/api/jobs/{job['id']}/storyboard", {'scenes': [{'photos': list(range(7)), 'text': '숙소에서 보내는 하루'}]})
@@ -107,6 +108,7 @@ try:
     (job_root / 'job.json').write_text(json.dumps(saved, ensure_ascii=False), encoding='utf-8')
     assert (folder/'_internal/studio/skills/stay-shortform/SKILL_TEXT.md').is_file()
     assert (folder/'_internal/studio/skills/stay-shortform/SKILL_MOTION.md').is_file()
+    assert (folder/'_internal/studio/skills/stay-shortform/SKILL_ENHANCE.md').is_file()
     api(f"/api/jobs/{job['id']}/preview-video", {})
     for _ in range(120):
         job = api('/api/jobs/' + job['id'])
