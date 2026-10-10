@@ -6,9 +6,17 @@ import uuid
 
 from . import assets, codex, composition, recommendation, store
 from .media import crop_photo
-from .models import MOTION_PARAMETERS, VIDEO_MODEL, motion_fingerprint, stable_hash
+from .models import MIN_MOTION_SIDE, motion_fingerprint, stable_hash
 from .paths import job_path
 from .render import publish_preview, render, video_size
+
+
+def capability(motion):
+    return 'i2v_ref' if len(motion.photos) > 1 else 'i2v'
+
+
+def clip_parameters(job, motion):
+    return dict(job.video_parameters, duration=f'{motion.seconds}s')
 
 
 class Pipeline:
@@ -79,10 +87,11 @@ class Pipeline:
             assets.capture(job)
             assets.restore(job)
         if job.storyboard.motion:
-            model = await self.fish.call('get_media_model', {'model_id': VIDEO_MODEL})
-            schema = model['capabilities']['i2v']['parameter_schema']['properties']
-            if '1080p' not in schema['resolution']['enum'] or '9:16' not in schema['aspect_ratio']['enum']:
-                raise RuntimeError('현재 Fish 모델이 1080p / 9:16 생성을 지원하지 않습니다.')
+            model = await self.fish.call('get_media_model', {'model_id': job.video_model})
+            for motion in job.storyboard.motion:
+                schema = model.get('capabilities', {}).get(capability(motion), {}).get('parameter_schema', {}).get('properties', {})
+                if any(value not in schema.get(key, {}).get('enum', []) for key, value in clip_parameters(job, motion).items()):
+                    raise RuntimeError(f'Fish 모델 {job.video_model}이 선택한 화질·비율·길이 또는 여러 사진 클립을 지원하지 않습니다. 영상 모델을 다시 골라 주세요.')
         folder = job_path(job.id)
         focus = {item.photo: (item.x, item.y) for item in job.storyboard.crop_focus}
         videos, voices = [], []
@@ -95,19 +104,29 @@ class Pipeline:
                 continue
             if saved.get('generation_id'):
                 continue  # Already submitted: resume polling without purchasing it again.
-            image = folder / f'motion-source-{motion.photo:03}.jpg'
-            crop_photo(folder / job.photos[motion.photo]['file'], *focus.get(motion.photo, (0.5, 0.5))).save(image, quality=96)
-            fingerprint = motion_fingerprint(hashlib.sha256(image.read_bytes()).hexdigest(), motion.prompt)
+            images = []
+            for photo in motion.photos:
+                image = folder / f'motion-source-{photo:03}.jpg'
+                crop_photo(folder / job.photos[photo]['file'], *focus.get(photo, (0.5, 0.5))).save(image, quality=96)
+                images.append(image)
+            hashes = [hashlib.sha256(image.read_bytes()).hexdigest() for image in images]
+            parameters = clip_parameters(job, motion)
+            fingerprint = motion_fingerprint(hashes[0] if len(hashes) == 1 else stable_hash(hashes), motion.prompt,
+                                             job.video_model, parameters)
             if saved.get('fingerprint') != fingerprint or saved.get('workspace') != workspace:
+                keys = [await self.fish.upload(image, workspace) for image in images]
                 saved = {'fingerprint': fingerprint, 'workspace': workspace,
                          'asset_key': assets.cache_key(job, assets.motion_key(job, motion)),
                          'photo_sha': job.photos[motion.photo]['sha256'], 'prompt': motion.prompt,
-                         'object_key': await self.fish.upload(image, workspace)}
+                         'object_key': keys[0], 'object_keys': keys}
                 job.generated[index] = saved
                 store.save(job)
-            request = {'workspace_id': workspace, 'model_id': VIDEO_MODEL, 'operation': 'i2v',
-                       'parameters': MOTION_PARAMETERS, 'prompt': motion.prompt,
-                       'input_object_key': saved['object_key']}
+            request = {'workspace_id': workspace, 'model_id': job.video_model,
+                       'parameters': parameters, 'prompt': motion.prompt}
+            if len(motion.photos) > 1:
+                request['inputs'] = [{'role': 'ref', 'object_key': key} for key in saved['object_keys']]
+            else:
+                request.update(operation='i2v', input_object_key=saved['object_key'])
             value = await self.fish.call('estimate_video_generation', request)
             if not value.get('can_generate'):
                 raise RuntimeError('Fish 움직임 생성에 필요한 크레딧이 부족합니다.')
@@ -190,8 +209,8 @@ class Pipeline:
                     store.save(job)
                     output = folder / (f"motion-{stable_hash(saved['asset_key'])}.mp4" if job.workflow_version >= 2 else f'motion-{motion.photo:03}.mp4')
                     await self.fish.download(url, output)
-                    if await asyncio.to_thread(video_size, output) != (1080, 1920):
-                        raise RuntimeError('Fish 결과가 1080×1920이 아닙니다. 이 결과를 고화질로 표시하지 않습니다.')
+                    if min(await asyncio.to_thread(video_size, output)) < MIN_MOTION_SIDE:
+                        raise RuntimeError(f'Fish 결과가 {MIN_MOTION_SIDE}p보다 작습니다. 이 결과는 영상에 사용하지 않습니다.')
                     saved['file'] = output.name
                     store.save(job)
                     break
