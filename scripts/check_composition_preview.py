@@ -25,7 +25,7 @@ folder = data / 'jobs' / identifier
 folder.mkdir(parents=True, exist_ok=True)
 job = Job(id=identifier, workflow_version=2, photo_order=[0,1,2],
     photos=[{'file': f'p{i}.jpg', 'name': f'사진 {i+1}', 'sha256': str(i)} for i in range(3)],
-    storyboard=Storyboard(scenes=[{'photos': [i], 'text': f'장면 {i+1}', 'caption_text': f'자막 {i+1}'} for i in range(3)],
+    storyboard=Storyboard(scenes=[{'photos': [i], 'text': f'장면 {i+1}'} for i in range(3)],
         motion=[{'photo': 0, 'prompt': 'Preserve the original scene; slow subtle water ripples.'}],
         motion_recommendations=[{'photo': i, 'recommended': i==0, 'reason': '물결 적합' if i==0 else '정지 권장', 'prompt': '', 'explanation': ''} for i in range(3)]),
     generated={'0': {'file': 'motion.mp4', 'state': 'completed', 'photo_sha': '0', 'prompt': 'Preserve the original scene; slow subtle water ripples.'}},
