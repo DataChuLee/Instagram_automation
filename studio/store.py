@@ -45,7 +45,7 @@ def list_jobs():
 
 def recover():
     for job in list_jobs():
-        if job.state == 'enhancing':
+        if job.state in {'enhancing', 'preparing'}:
             for photo in job.photos:
                 photo.pop('enhancing', None)
             job.state = 'uploaded'
