@@ -99,8 +99,8 @@ class ExportTests(unittest.TestCase):
             subtitle_seconds = float(re.search(r'--> 00:00:(\d+,\d+)', srt).group(1).replace(',', '.'))
             self.assertLess(abs(video_seconds - subtitle_seconds), 0.034)
             # 0.5s of speech plus the breath after its sentence (SENTENCE_PAUSE).
-            self.assertGreater(video_seconds, 0.7)
-            self.assertLess(video_seconds, 0.85)
+            self.assertGreater(video_seconds, 0.6)
+            self.assertLess(video_seconds, 0.75)
             # Clean solid-color frame stays uniform at the caption location; final has text.
             def frame(key):
                 output = folder / (key + '.png')

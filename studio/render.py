@@ -13,8 +13,8 @@ from .assets import render_revision
 from .models import MIN_MOTION_SIDE
 from .paths import RESOURCES, job_path
 
-# Pause lengths measured on the reference reel (2026-10-12): ~0.2s after each sentence, ~0.08s between phrases.
-SENTENCE_PAUSE = 0.25  # Breath after a sentence, scene ends included, so the next line does not run on.
+# Pause lengths measured on the reference reel (2026-10-12): ~0.18s after each sentence, ~0.08s between phrases.
+SENTENCE_PAUSE = 0.15  # Breath after a sentence, scene ends included, so the next line does not run on.
 PHRASE_PAUSE = 0.08  # Longest pause kept inside a sentence; leading silence is dropped.
 SILENCE = 328  # About -40dBFS on 16-bit samples.
 CAPTION_LEAD = 0.1  # Seconds a mid-sentence caption appears before its estimated spoken start.

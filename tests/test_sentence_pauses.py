@@ -50,7 +50,7 @@ class SentencePauseTests(unittest.TestCase):
             write(source, [(0.3, False), (0.5, True), (0.6, False), (0.4, True), (0.2, False), (0.3, True), (1.0, False)])
             spans = pace_pauses(source, target, breaks=1)
             self.assertEqual(runs(target), [0.5, SENTENCE_PAUSE, 0.4, PHRASE_PAUSE, 0.3, SENTENCE_PAUSE])
-            self.assertEqual([tuple(round(v, 2) for v in span) for span in spans], [(0, 0.5), (0.75, 1.53)])
+            self.assertEqual([tuple(round(v, 2) for v in span) for span in spans], [(0, 0.5), (round(0.5 + SENTENCE_PAUSE, 2), round(0.5 + SENTENCE_PAUSE + 0.4 + PHRASE_PAUSE + 0.3, 2))])
 
     def test_pauses_are_stretched_by_speed_so_atempo_lands_on_target(self):
         with tempfile.TemporaryDirectory() as folder:
