@@ -30,6 +30,7 @@ def main():
     parser.add_argument('job_id', nargs='?')
     parser.add_argument('--list-ready', action='store_true')
     parser.add_argument('--benchmark-render', action='store_true', help='Copy active inputs and measure a local render. No AI requests.')
+    parser.add_argument('--workers', type=int, choices=(1, 2, 3), default=2, help='Maximum simultaneous clip encodes.')
     args = parser.parse_args()
     if args.list_ready:
         for job in store.list_jobs():
@@ -58,10 +59,10 @@ def main():
             shutil.copyfile(folder / relative, target)
         print('Benchmark folder:', destination, flush=True)
         with performance.run(destination, 'local_render_benchmark'):
-            result = render(job, progress=lambda message: print(message, flush=True), folder=destination)
+            result = render(job, progress=lambda message: print(message, flush=True), folder=destination, workers=args.workers)
         folder = destination
         (folder / 'benchmark.json').write_text(json.dumps(
-            {'source_job': job.id, 'photos': len(job.photos), 'scenes': len(job.storyboard.scenes),
+            {'source_job': job.id, 'workers': args.workers, 'photos': len(job.photos), 'scenes': len(job.storyboard.scenes),
              'motions': len(job.storyboard.motion), 'result': result}, ensure_ascii=False, indent=2), encoding='utf-8')
     summary = performance.report(folder)
     if args.benchmark_render:
