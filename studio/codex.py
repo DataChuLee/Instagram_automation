@@ -6,15 +6,12 @@ import os
 import shutil
 from pathlib import Path
 
-from .models import MIN_PHOTOS, Storyboard, plan_clips
+from .models import MIN_PHOTOS, TARGET_SECONDS, Storyboard, plan_clips
 from .paths import DATA, RESOURCES, initialize, job_path
 
 SKILLS = RESOURCES / 'studio/skills/stay-shortform'
 SKILL_FILES = ('SKILL_TEXT.md', 'SKILL_MOTION.md')  # Narration rules, then photo motion rules.
 SCRIPT_OPTIONS = 3  # Narration candidates the user chooses from.
-# Narration matches the reference scripts (~260-300 chars). The render follows the audio and slows the
-# TARGET_SECONDS of motion clips (at most 2x), so a longer script does not lengthen paid clips.
-NARRATION_SECONDS = 40
 
 
 def executable():
@@ -71,7 +68,7 @@ async def analyze(job):
     if len(order) < MIN_PHOTOS:
         raise ValueError(f'사진은 최소 {MIN_PHOTOS}장 이상 넣어 주세요. 현재 {len(order)}장입니다.')
     clips = plan_clips(order)
-    shot = NARRATION_SECONDS / len(order)
+    shot = TARGET_SECONDS / len(order)
     prompt = f'''{skill()}
 첨부 사진은 0부터 {len(job.photos)-1}까지 원본 사진 번호입니다.
 사진 사용 순서는 반드시 {json.dumps(order)}를 지키세요. 모든 사진을 정확히 한 번 사용하세요.
@@ -79,7 +76,7 @@ async def analyze(job):
 text는 내레이션이며 화면 자막으로도 그대로 표시됩니다. id는 빈 문자열로 반환하세요.
 대본은 '대본 후보 3개' 규칙에 따라 서로 다른 각도로 정확히 {SCRIPT_OPTIONS}개를 script_options에 작성하세요. 장면 묶음(scenes의 photos)은 세 후보가 함께 쓰므로, 각 후보의 texts는 장면 수와 같은 개수로 장면 순서대로 쓰세요.
 scenes의 text에는 첫 번째 후보의 문장을 그대로 넣고 script_choice는 0으로 두세요.
-영상은 내레이션 길이에 맞춰지며 약 {NARRATION_SECONDS}초, 사진 한 장이 약 {shot:.1f}초 보입니다. 내레이션 전체를 예시 대본과 같은 분량(공백 포함 약 260~300자)으로 쓰고 줄이지 마세요. 장면의 사진 한 장마다 자막 구 1~3개가 걸리게 쓰세요.
+영상 전체는 약 {TARGET_SECONDS}초이고 사진 한 장이 약 {shot:.1f}초 보입니다. 내레이션 전체를 {TARGET_SECONDS}초 안팎(공백 포함 약 {TARGET_SECONDS * 7}자)에 맞추고, 장면의 사진 한 장마다 자막 구 1~2개가 걸리게 쓰세요.
 text는 장면마다 공백 포함 150자 이내의 완성된 문장으로 쓰고 마침표나 물음표로 끝내세요. 화면 자막은 쉼표·마침표 단위로 한 구씩 표시되므로 구 사이를 쉼표로 나누세요. 마지막 장면의 저장 유도 문장을 자르지 마세요.
 사진별 crop_focus를 0~1 좌표로 지정하세요.
 모든 사진에 motion_recommendations를 작성하세요. recommended는 true, prompt는 빈 문자열로 두세요.

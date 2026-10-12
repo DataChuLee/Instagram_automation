@@ -67,7 +67,7 @@ class ScriptOptionTests(unittest.TestCase):
 
     def test_skill_carries_the_few_shot_examples(self):
         text = codex.skill()
-        for phrase in ('260~300자', '대본 후보 3개', '여기 한국 맞아요?', '여기 찜질방 맞아?', '사계절 내내 미온수'):
+        for phrase in ('대본 후보 3개', '여기 한국 맞아요?', '여기 찜질방 맞아?', '사계절 내내 미온수'):
             self.assertIn(phrase, text)
 
 
