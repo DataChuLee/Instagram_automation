@@ -108,7 +108,7 @@ class Drama:
     async def recover(self, request, path, saved):
         async with self.lock:
             await self.help()
-            await self.collect(request, path, saved)
+        await self.collect(request, path, saved)
 
     async def generate(self, text, expected_credits, path, saved, request):
         async with self.lock:
@@ -124,4 +124,5 @@ class Drama:
                 await saved({**request, 'state': 'submitted'})
                 await performance.wait('voice.submit', self.fish.call('studio_generate', {
                     'project_id': request['project_id'], 'blocks': [request['block']], 'only_dirty': True}))
-            await self.collect(request, path, saved)
+        # Mutations remain serialized; waiting on independent projects doesn't hold the lock.
+        await self.collect(request, path, saved)
