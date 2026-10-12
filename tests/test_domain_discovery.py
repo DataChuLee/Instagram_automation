@@ -55,7 +55,7 @@ class DiscoveryTests(unittest.TestCase):
     def test_a_new_folder_becomes_a_domain_in_order(self):
         food(self.skills)
         domains.reload()
-        self.assertEqual(domains.ids(), ['stay', 'food', 'shopping'])
+        self.assertEqual(domains.ids(), ['stay', 'stay-silent', 'food', 'shopping'])
         dish = domains.load('food')
         self.assertEqual((dish.media, dish.min_media, dish.version), ('photo', 4, '3'))
         self.assertEqual(dish.words()['noun'], '메뉴 사진')  # Domain ui overrides the media default.
@@ -104,7 +104,7 @@ class DiscoveryTests(unittest.TestCase):
         problems = domains.reload()
         self.assertIn('Restarant', problems['food'])
         self.assertIn('Scene은 엔진이 정의하는 타입', problems['food'])
-        self.assertEqual(domains.ids(), ['stay', 'shopping'])  # The other kinds still load.
+        self.assertEqual(domains.ids(), ['stay', 'stay-silent', 'shopping'])  # The other kinds still load.
 
     def test_data_folder_adds_and_overrides_file_by_file(self):
         food(self.data / 'domains', self.skills)  # A kind added without touching the app's own folders.
@@ -167,10 +167,10 @@ class DiscoveryApiTests(DiscoveryTests):
         food(self.skills)
         domains.reload()
         listed = self.client.get('/api/domains', headers=self.headers).json()
-        self.assertEqual([d['id'] for d in listed], ['stay', 'food', 'shopping'])
-        dish = listed[1]
+        self.assertEqual([d['id'] for d in listed], ['stay', 'stay-silent', 'food', 'shopping'])
+        dish = next(d for d in listed if d['id'] == 'food')
         self.assertEqual((dish['ui']['noun'], dish['ui']['heading'], dish['facts'][0]['key']), ('메뉴 사진', '사진 & 이야기', 'price'))
-        self.assertEqual(listed[2]['ui']['heading'], '영상 & 이야기')
+        self.assertEqual(next(d for d in listed if d['id'] == 'shopping')['ui']['heading'], '영상 & 이야기')
         created = self.upload('food')
         self.assertEqual(created.json()['domain'], 'food')
 
