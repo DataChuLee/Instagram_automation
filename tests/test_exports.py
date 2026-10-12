@@ -73,7 +73,7 @@ class ExportTests(unittest.TestCase):
                 audio.setparams((1, 2, 48000, 0, 'NONE', 'not compressed'))
                 audio.writeframes(tone(24000))
             job = Job(id='f' * 32, photos=[{'file': 'photo.jpg'}],
-                      storyboard=Storyboard(scenes=[{'photos': [0], 'text': '초록빛 쉼표'}]),
+                      storyboard=Storyboard(scenes=[{'photos': [0], 'text': '초록빛 쉼표.'}]),
                       narration={'0': {'file': 'voice.wav'}})
             with patch('studio.render.job_path', return_value=folder):
                 result = render(job)
@@ -98,8 +98,9 @@ class ExportTests(unittest.TestCase):
             video_seconds = float(re.search(r'Duration: 00:00:([\d.]+)', clean).group(1))
             subtitle_seconds = float(re.search(r'--> 00:00:(\d+,\d+)', srt).group(1).replace(',', '.'))
             self.assertLess(abs(video_seconds - subtitle_seconds), 0.034)
-            self.assertGreater(video_seconds, 0.45)
-            self.assertLess(video_seconds, 0.6)
+            # 0.5s of speech plus the breath after its sentence (SENTENCE_PAUSE).
+            self.assertGreater(video_seconds, 0.7)
+            self.assertLess(video_seconds, 0.85)
             # Clean solid-color frame stays uniform at the caption location; final has text.
             def frame(key):
                 output = folder / (key + '.png')
