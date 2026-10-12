@@ -50,6 +50,9 @@ class Domain(BaseModel):
     features: Features = Field(default_factory=Features)
     ui: dict[str, str] = Field(default_factory=dict)
     disclosure: str = ''  # Shown small on the final reel, e.g. an affiliate notice.
+    media: Literal['photo', 'video'] = 'photo'  # photo: stills animated by AI clips; video: uploaded clips edited.
+    min_media: int = Field(10, ge=1)
+    max_media: int = Field(60, ge=1)
 
     @property
     def folder(self):
@@ -98,5 +101,6 @@ def schema_block(domain: Domain) -> str:
 def public(domain: Domain) -> dict:
     """What the UI needs: wording, features and the fields the user can fill in."""
     return {'id': domain.id, 'label': domain.label, 'ui': domain.ui, 'features': domain.features.model_dump(),
-            'disclosure': domain.disclosure,
+            'disclosure': domain.disclosure, 'media': domain.media, 'min_media': domain.min_media,
+            'max_media': domain.max_media,
             'facts': [{'key': prop.name, 'label': prop.label, 'object': kind.label} for kind, prop in domain.facts()]}

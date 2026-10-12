@@ -31,6 +31,18 @@ def crop_photo(path: Path, focus_x=0.5, focus_y=0.5) -> Image.Image:
     return image.crop(box).resize(SIZE, Image.Resampling.LANCZOS)
 
 
+def crop_video_frame(path: Path, crop: dict) -> Image.Image:
+    """A source-video frame zoomed into 1080x1920 the way render.crop_filter does it."""
+    with Image.open(path) as source:
+        image = source.convert('RGB')
+    zoom, x, y = crop.get('zoom', 1.0), crop.get('x', 0.5), crop.get('y', 0.5)
+    scale = max(SIZE[0] * zoom / image.width, SIZE[1] * zoom / image.height)
+    image = image.resize((max(SIZE[0], round(image.width * scale)), max(SIZE[1], round(image.height * scale))),
+                         Image.Resampling.LANCZOS)
+    left, top = round((image.width - SIZE[0]) * x), round((image.height - SIZE[1]) * y)
+    return image.crop((left, top, left + SIZE[0], top + SIZE[1]))
+
+
 def wrap_caption(text: str, font, width=940, outline=8) -> str:
     draw = ImageDraw.Draw(Image.new('RGB', (1, 1)))
     lines, line = [], ''

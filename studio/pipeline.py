@@ -104,10 +104,12 @@ class Pipeline:
             raise ValueError('제출한 생성 작업을 먼저 완료하거나 복구해 주세요.')
         if job.workflow_version < 2 and (job.generated or assets.voice_started(job)):
             raise ValueError('생성 결과가 있는 작업은 대본을 다시 분석할 수 없습니다. 새 작업을 만들어 주세요.')
-        self.update(job, 'analyzing', 'Codex가 사진을 보고 대본과 움직임 장면을 고르고 있습니다.')
+        self.update(job, 'analyzing', 'Codex가 영상을 보고 대본과 장면 구간, 자막 가림을 고르고 있습니다.' if domains.load(job.domain).media == 'video'
+                    else 'Codex가 사진을 보고 대본과 움직임 장면을 고르고 있습니다.')
         assets.capture(job)
         assets.checkpoint(job)
-        job.storyboard = await codex.analyze(job)
+        video = domains.load(job.domain).media == 'video'
+        job.storyboard = await (codex.analyze_video(job) if video else codex.analyze(job))
         assets.restore(job)
         assets.invalidate(job)
         self.update(job, 'uploaded', '대본을 준비했습니다. 자막을 조절하고 크레딧 견적을 확인해 주세요.')

@@ -15,6 +15,7 @@ MIN_PHOTOS = 10
 TARGET_SECONDS = 25  # Average reel length; every photo shares it.
 CLIP_PHOTOS = 4  # Reference images per clip; four kept each shot faithful in the 2026-10-09 test.
 MIN_CLIP_SECONDS = 4  # Shortest clip Fish video models accept.
+MIN_SEGMENT, MAX_SEGMENT = 0.5, 8.0  # Seconds of source video one shot may use.
 
 
 def plan_clips(order: list[int], total=TARGET_SECONDS) -> list[dict]:
@@ -95,6 +96,27 @@ class CropFocus(BaseModel):
     y: float = Field(0.5, ge=0, le=1)
 
 
+class Segment(BaseModel):
+    """A stretch of an uploaded source video used as one shot (video domains: Scene.photos index these)."""
+    source: int = Field(ge=0)
+    start: float = Field(ge=0)
+    end: float = Field(gt=0)
+
+    @model_validator(mode='after')
+    def span(self):
+        if not MIN_SEGMENT <= self.end - self.start <= MAX_SEGMENT:
+            raise ValueError(f'영상 구간은 {MIN_SEGMENT}~{MAX_SEGMENT:g}초 길이여야 합니다.')
+        return self
+
+
+class CropBox(BaseModel):
+    """How a source video is zoomed into 9:16 to push burned-in subtitles and watermarks out of frame."""
+    zoom: float = Field(1.0, ge=1.0, le=2.5)
+    x: float = Field(0.5, ge=0, le=1)
+    y: float = Field(0.5, ge=0, le=1)
+    user: bool = False  # Set once the user adjusts it, so a new analysis keeps their choice.
+
+
 class ScriptOption(BaseModel):
     """One full narration candidate: a text per scene, sharing the storyboard's scene grouping."""
     title: str = Field(min_length=1, max_length=40)
@@ -104,6 +126,7 @@ class ScriptOption(BaseModel):
 class Storyboard(BaseModel):
     scenes: list[Scene] = Field(min_length=1)
     script_options: list[ScriptOption] = Field(default_factory=list, max_length=5)
+    segments: list[Segment] = Field(default_factory=list)  # Video domains only; empty for photo storyboards.
     script_choice: int = Field(0, ge=0)
     motion: list[Motion] = Field(default_factory=list)
     crop_focus: list[CropFocus] = Field(default_factory=list)
@@ -138,6 +161,20 @@ class Storyboard(BaseModel):
             raise ValueError('크롭 기준이 중복되었습니다.')
         if any(r.photo >= photo_count for r in plan.motion_recommendations) or len({r.photo for r in plan.motion_recommendations}) != len(plan.motion_recommendations):
             raise ValueError('움직임 추천의 사진 번호가 올바르지 않습니다.')
+        return plan
+
+    @classmethod
+    def validate_video_plan(cls, value, sources: list[dict]):
+        """A video-domain plan: scenes use every segment once, in order, and segments stay inside their source."""
+        plan = cls.model_validate(value)
+        if not plan.segments:
+            raise ValueError('영상 구간이 없습니다.')
+        plan = cls.validate_plan(value, len(plan.segments), 0, list(range(len(plan.segments))))
+        for segment in plan.segments:
+            if segment.source >= len(sources) or sources[segment.source].get('kind') != 'video':
+                raise ValueError('영상 구간의 소스 번호가 올바르지 않습니다.')
+            if segment.end > sources[segment.source]['duration'] + 0.05:
+                raise ValueError(f'{segment.source + 1}번 영상은 {sources[segment.source]["duration"]:.1f}초까지만 있습니다.')
         return plan
 
 

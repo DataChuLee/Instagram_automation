@@ -62,7 +62,8 @@ def voice_started(job):
 
 
 def render_revision(job):
-    value = {'photos': [p.get('sha256', p.get('file')) for p in job.photos],
+    value = {'photos': [[p['sha256'], p.get('crop')] if p.get('kind') == 'video' else p.get('sha256', p.get('file'))
+                        for p in job.photos],  # Source videos also carry their crop; photo entries are unchanged.
         'storyboard': job.storyboard.model_dump() if job.storyboard else None,
         'caption': job.options.caption.model_dump(), 'speed': job.options.speed,
         'voices': job.narration, 'motions': job.generated}

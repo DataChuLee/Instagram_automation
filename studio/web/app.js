@@ -57,6 +57,12 @@ function drawDomain(){
   lines($('previewTitle'),ui.preview_title);lines($('previewText'),ui.preview_text);
   $('linkSource').hidden=!info.features.link_collection;
   $('enhance').hidden=!info.features.enhance;if(ui.enhance_label)$('enhance').textContent=ui.enhance_label;
+  const video=info.media==='video';
+  $('files').accept=video?'video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm':'image/jpeg,image/png,image/webp';
+  $('uploadHint').textContent=ui.upload_hint||'드래그하거나 클릭해서 선택 · JPG, PNG, WebP';
+  $('photoHint').textContent=video?'영상을 누르면 자막 가림(확대·위치)을 조절할 수 있어요':'모든 사진이 영상에 담깁니다 · 끌어서 순서 변경';
+  document.querySelector('.composition-controls').hidden=video;$('motionEditor').hidden=video;$('modelPanel').hidden=video;
+  $('analyze').textContent=video?'영상 분석 & 대본 만들기 ↗':'사진 분석 & 대본 만들기 ↗';
   document.querySelector('input[name=compositionMode][value=ai]').closest('label').hidden=!info.features.ai_composition;
   $('captionText').defaultValue=ui.caption_default||'';if(!job?.storyboard)$('captionText').value=$('captionText').defaultValue;
   if(compositionMode()==='ai')$('compositionHelp').textContent=ui.ai_help||'';
@@ -81,21 +87,73 @@ async function updatePreview(){
   if(previewMode==='video'&&(job.preview||job.result)){showVideo();return;}
   const sequence=++previewSequence,id=job.id,photo=selectedPhoto;
   const focus=job.storyboard?.crop_focus.find(f=>f.photo===photo);
-  const blob=await api(`/api/jobs/${id}/preview`,{photo,text:$('captionText').value,caption:caption(),...(focus?{focus:{x:focus.x,y:focus.y}}:{})},true);
+  const body=job.photos[photo]?.kind==='video'?{photo,time:previewTime,text:$('captionText').value,caption:caption(),...(cropDraft?{crop:cropDraft}:{})}
+    :{photo,text:$('captionText').value,caption:caption(),...(focus?{focus:{x:focus.x,y:focus.y}}:{})};
+  const blob=await api(`/api/jobs/${id}/preview`,body,true);
   if(sequence!==previewSequence||job?.id!==id||selectedPhoto!==photo||previewMode!=='photo')return;
   if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(blob);$('preview').src=previewUrl;
   $('preview').hidden=false;$('previewEmpty').hidden=true;$('video').hidden=true;drawPreviewStatus(Boolean(sourceBusy||busyStates.has(job.state)));
 }
 function drawPhotos(){
-  const grid=$('photoGrid');photoDrag=null;grid.classList.remove('reordering');grid.replaceChildren();$('photoCount').textContent=`사용 사진 ${job?job.photos.length:0}장`;if(!job)return;
+  const grid=$('photoGrid');photoDrag=null;grid.classList.remove('reordering');grid.replaceChildren();$('photoCount').textContent=videoDomain()?`소스 영상 ${job?job.photos.length:0}개`:`사용 사진 ${job?job.photos.length:0}장`;if(!job)return;
   const order=job.photo_order?.length?job.photo_order:job.photos.map((_,i)=>i);
-  order.forEach((index,position)=>{const photo=job.photos[index],card=document.createElement('div');card.className='ordered-photo';card.onpointerdown=e=>grabPhoto(e,card,position);
+  order.forEach((index,position)=>{if(job.photos[index].kind==='video'){grid.append(videoCard(index,position));return;}const photo=job.photos[index],card=document.createElement('div');card.className='ordered-photo';card.onpointerdown=e=>grabPhoto(e,card,position);
     const button=document.createElement('button');button.title=photo.name;button.setAttribute('aria-label',`${position+1}번 사진 선택`);button.classList.toggle('selected',index===selectedPhoto);
     const image=document.createElement('img');image.src=`/api/jobs/${job.id}/files/${photo.file}`;image.alt=photo.name;image.loading='lazy';image.draggable=false;const number=document.createElement('span');number.textContent=String(position+1).padStart(2,'0');button.append(image,number);
     button.onclick=action(()=>selectPhoto(index));
     const controls=document.createElement('div');controls.className='photo-moves';for(const [label,delta] of [['←',-1],['→',1]]){const move=document.createElement('button');move.textContent=label;move.setAttribute('aria-label',`${position+1}번 사진 ${delta<0?'앞':'뒤'}으로 이동`);move.disabled=planLocked()||position+delta<0||position+delta>=order.length;move.onclick=action(()=>movePhoto(position,position+delta));controls.append(move);}card.append(button,controls);enhanceControls(card,button,photo,index,position);
     const reason=job.selection_reasons?.[photo.sha256]||job.storyboard?.selection_reasons?.[String(index)];if(reason){const details=document.createElement('small');details.textContent=reason;card.append(details);}grid.append(card);
-  });drawCandidates();drawPhotoNav();
+  });drawCandidates();drawPhotoNav();drawCropEditor();
+}
+// Video domains (shopping): uploaded source clips, each zoomed to hide burned-in subtitles, cut into script segments.
+let previewTime=0,cropDraft=null,cropTimer=null,selectedSegment=null;
+function videoDomain(){return domainInfo()?.media==='video';}
+function videoCard(index,position){
+  const photo=job.photos[index],card=document.createElement('div');card.className='ordered-photo source-video';
+  const button=document.createElement('button');button.title=photo.name;button.setAttribute('aria-label',`${position+1}번 영상 선택`);button.classList.toggle('selected',index===selectedPhoto);
+  const image=document.createElement('img');image.src=`/api/jobs/${job.id}/files/${photo.thumb}`;image.alt=photo.name;image.loading='lazy';image.draggable=false;
+  const number=document.createElement('span');number.textContent=`${String(position+1).padStart(2,'0')} · ${photo.duration.toFixed(1)}초`;button.append(image,number);
+  const zoom=photo.crop?.zoom||1;if(zoom>1.001){const badge=document.createElement('b');badge.className='hd-badge';badge.textContent=`×${zoom.toFixed(2)}`;badge.title='자막 가림 확대';button.append(badge);}
+  button.onclick=action(()=>selectSource(index));const name=document.createElement('small');name.textContent=photo.name;card.append(button,name);return card;
+}
+function selectedSource(){const photo=job?.photos[selectedPhoto];return photo?.kind==='video'?photo:null;}
+function drawCropEditor(){
+  const source=selectedSource();$('cropEditor').hidden=!source;if(!source)return;
+  const crop=cropDraft||source.crop||{zoom:1,x:.5,y:.5};
+  $('cropTitle').textContent=`영상 ${selectedPhoto+1} · 자막 가림`;
+  $('cropReason').textContent=source.crop_reason?`AI 판단: ${source.crop_reason}`:'영상을 분석하면 AI가 자막 위치를 보고 확대를 제안해요.';
+  $('cropZoom').value=crop.zoom;$('cropX').value=crop.x;$('cropY').value=crop.y;$('cropTime').max=Math.max(source.duration-0.1,0).toFixed(1);$('cropTime').value=previewTime;cropLabels();
+  const locked=planLocked();for(const id of ['cropZoom','cropX','cropY','cropNone'])$(id).disabled=locked;$('cropAi').disabled=locked||!source.crop_ai;
+}
+function cropLabels(){const place=(value,low,high)=>value<0.4?low:value>0.6?high:'가운데';$('cropZoomValue').value=`×${Number($('cropZoom').value).toFixed(2)}`;$('cropYValue').value=place(Number($('cropY').value),'위쪽','아래쪽');$('cropXValue').value=place(Number($('cropX').value),'왼쪽','오른쪽');$('cropTimeValue').value=`${Number($('cropTime').value).toFixed(1)}초`;}
+async function selectSource(index,time=null){selectedPhoto=index;cropDraft=null;previewTime=time??Math.min(1,(job.photos[index].duration||1)/2);previewMode='photo';$('video').pause();drawPhotos();await updatePreview();}
+function editCrop(){cropDraft={zoom:Number($('cropZoom').value),x:Number($('cropX').value),y:Number($('cropY').value)};cropLabels();queuePreview();clearTimeout(cropTimer);const index=selectedPhoto,draft=cropDraft;cropTimer=setTimeout(()=>saveCrop(index,draft).catch(showError),500);}
+async function saveCrop(index,draft){if(!job||planLocked())return;const storyboard=job.storyboard;job={...await api(`/api/jobs/${job.id}/sources/${index}/crop`,draft),preview_stale:true};if(dirtyScript)job.storyboard=storyboard;if(cropDraft===draft)cropDraft=null;drawPhotos();drawStatus();}
+for(const id of ['cropZoom','cropX','cropY'])$(id).addEventListener('input',editCrop);
+$('cropTime').addEventListener('input',()=>{previewTime=Number($('cropTime').value);cropLabels();queuePreview();});
+$('cropAi').onclick=()=>{const ai=selectedSource()?.crop_ai;if(!ai)return;$('cropZoom').value=ai.zoom;$('cropX').value=ai.x;$('cropY').value=ai.y;editCrop();};
+$('cropNone').onclick=()=>{$('cropZoom').value=1;$('cropX').value=.5;$('cropY').value=.5;editCrop();};
+function currentScene(){const plan=job?.storyboard;if(!plan)return null;return plan.segments?.length?plan.scenes.find(s=>s.photos.includes(selectedSegment)):plan.scenes.find(s=>s.photos.includes(selectedPhoto));}
+function regroup(change){const plan=job.storyboard,groups=plan.scenes.map(s=>s.photos.map(i=>({...plan.segments[i]})));change(groups);let next=0;plan.segments=groups.flat();plan.scenes.forEach((scene,i)=>{scene.photos=groups[i].map(()=>next++);});selectedSegment=null;planChanged();drawScript();}
+function secondsInput(value,label){const input=document.createElement('input');input.type='number';input.step='0.1';input.min='0';input.value=Number(value).toFixed(1);input.className='segment-time';input.setAttribute('aria-label',label);return input;}
+function segmentValid(segment){const length=segment.end-segment.start,source=job.photos[segment.source];return Boolean(source)&&segment.start>=0&&length>=0.5&&length<=8&&segment.end<=source.duration+0.05;}
+function segmentRows(scene,sceneIndex){
+  const plan=job.storyboard,locked=planLocked(),list=document.createElement('div');list.className='segment-list';
+  scene.photos.forEach((segmentIndex,k)=>{
+    const segment=plan.segments[segmentIndex],row=document.createElement('div');row.className='segment-row';row.classList.toggle('selected',segmentIndex===selectedSegment);row.classList.toggle('invalid',!segmentValid(segment));
+    const pick=document.createElement('select');pick.setAttribute('aria-label',`${sceneIndex+1}번 장면 ${k+1}번 구간의 영상`);
+    job.photos.forEach((photo,i)=>{if(photo.kind!=='video')return;const option=document.createElement('option');option.value=String(i);option.textContent=`영상 ${i+1}`;pick.append(option);});pick.value=String(segment.source);
+    const start=secondsInput(segment.start,`${sceneIndex+1}번 장면 ${k+1}번 구간 시작 초`),end=secondsInput(segment.end,`${sceneIndex+1}번 장면 ${k+1}번 구간 끝 초`);
+    const sync=()=>{segment.source=Number(pick.value);segment.start=Number(start.value);segment.end=Number(end.value);row.classList.toggle('invalid',!segmentValid(segment));planChanged();};
+    for(const input of [pick,start,end]){input.disabled=locked;input.oninput=sync;}
+    const view=document.createElement('button');view.type='button';view.className='quiet';view.textContent='보기';view.onclick=action(async()=>{selectedSegment=segmentIndex;$('captionText').value=scene.text;await selectSource(segment.source,segment.start);drawScript();});
+    const remove=document.createElement('button');remove.type='button';remove.className='quiet';remove.textContent='삭제';remove.disabled=locked||scene.photos.length<2;remove.onclick=()=>regroup(groups=>groups[sceneIndex].splice(k,1));
+    const seconds=document.createElement('span');seconds.className='segment-sep';seconds.textContent='~';
+    row.append(pick,start,seconds,end,view,remove);list.append(row);
+  });
+  const add=document.createElement('button');add.type='button';add.className='quiet segment-add';add.textContent='+ 구간 추가';add.disabled=locked||scene.photos.length>=4;
+  add.onclick=()=>regroup(groups=>{const last=groups[sceneIndex].at(-1),length=job.photos[last.source].duration,start=Math.max(0,Math.min(last.end,length-2));groups[sceneIndex].push({source:last.source,start:+start.toFixed(1),end:+Math.min(start+2,length).toFixed(1)});});
+  list.append(add);return list;
 }
 // 사진 끌어서 순서 바꾸기: 마우스는 6px 이상 끌면, 터치는 길게 누르면 시작한다.
 let photoDrag=null,photoClickBlock=0;
@@ -156,13 +214,13 @@ function photoOrder(){return job?.photo_order?.length?job.photo_order:(job?.phot
 async function selectPhoto(index){selectedPhoto=index;previewMode='photo';$('video').pause();drawPhotos();const scene=job.storyboard?.scenes.find(s=>s.photos.includes(index));if(scene)$('captionText').value=scene.text;await updatePreview();}
 async function stepPhoto(delta){const order=photoOrder(),next=order[order.indexOf(selectedPhoto)+delta];if(next!==undefined)await selectPhoto(next);}
 function drawPhotoNav(){
-  const order=photoOrder(),position=order.indexOf(selectedPhoto),show=previewMode==='photo'&&order.length>1&&position>=0;$('photoNav').hidden=!show;if(!show)return;
+  const order=photoOrder(),position=order.indexOf(selectedPhoto),show=previewMode==='photo'&&order.length>1&&position>=0&&!videoDomain();$('photoNav').hidden=!show;if(!show)return;
   const scene=job.storyboard?.scenes.findIndex(s=>s.photos.includes(selectedPhoto))??-1;
   $('photoPosition').textContent=(scene>=0?`장면 ${scene+1} · `:'')+`사진 ${position+1} / ${order.length}`;
   $('prevPhoto').disabled=position<=0;$('nextPhoto').disabled=position>=order.length-1;
 }
 function planLocked(){return Boolean(job&&(busyStates.has(job.state)||sourceBusy||job.pending_media||Object.values(job.generated).concat(Object.values(job.narration)).some(g=>['submitting','submitted'].includes(g.state)&&!g.file)||(job.workflow_version<2&&(Object.keys(job.narration).length||Object.values(job.generated).some(g=>g.generation_id||g.idempotency_key)))));}
-function planValid(){return Boolean(job?.storyboard&&job.storyboard.scenes.every(s=>s.text.trim().length>0)&&job.storyboard.motion.every(m=>m.prompt.trim().length>0&&m.prompt.trim().length<=2000));}
+function planValid(){return Boolean(job?.storyboard&&job.storyboard.scenes.every(s=>s.text.trim().length>0)&&job.storyboard.motion.every(m=>m.prompt.trim().length>0&&m.prompt.trim().length<=2000)&&(job.storyboard.segments||[]).every(segmentValid));}
 function planChanged(){dirtyScript=true;drawStatus();}
 function drawScript(){
   const panel=$('storyboard');panel.replaceChildren();
@@ -173,9 +231,9 @@ function drawScript(){
     const number=document.createElement('span');number.className='scene-number';number.textContent=String(index+1).padStart(2,'0');
     const body=document.createElement('div');body.className='scene-body';
     const text=document.createElement('textarea');text.value=scene.text;text.maxLength=160;text.disabled=planLocked();text.setAttribute('aria-label',`${index+1}번 장면 대본`);
-    text.oninput=()=>{scene.text=text.value;planChanged();if(scene.photos.includes(selectedPhoto)){$('captionText').value=text.value;queuePreview();}};
-    const info=document.createElement('small');info.textContent='사진 '+scene.photos.map(n=>n+1).join(', ')+' · 음성과 화면 자막에 같은 문장 사용'+(job.storyboard.motion.some(m=>m.photos.some(p=>scene.photos.includes(p)))?' · 움직임 포함':'');
-    body.append(text,info,mediaControls('voice',index));row.append(number,body);panel.append(row);
+    text.oninput=()=>{scene.text=text.value;planChanged();if(currentScene()===scene){$('captionText').value=text.value;queuePreview();}};
+    const info=document.createElement('small');info.textContent=(job.storyboard.segments?.length?`영상 구간 ${scene.photos.length}개`:'사진 '+scene.photos.map(n=>n+1).join(', '))+' · 음성과 화면 자막에 같은 문장 사용'+(job.storyboard.motion.some(m=>m.photos.some(p=>scene.photos.includes(p)))?' · 움직임 포함':'');
+    body.append(text,info);if(job.storyboard.segments?.length)body.append(segmentRows(scene,index));body.append(mediaControls('voice',index));row.append(number,body);panel.append(row);
   });drawMotion();
 }
 function drawScriptOptions(panel){
@@ -291,14 +349,15 @@ async function loadJob(id){
   const next=await api('/api/jobs/'+id);
   resetPreview();job=next;dirtyScript=dirtyStyle=dirtyFacts=false;candidateSelected.clear();
   selectedPhoto=job.photo_order?.[0]??job.storyboard?.scenes[0]?.photos[0]??0;previewMode=job.preview||job.result?'video':'photo';
-  loadStyle();const scene=job.storyboard?.scenes.find(s=>s.photos.includes(selectedPhoto));if(scene)$('captionText').value=scene.text;await updatePreview();
+  const first=job.storyboard?.segments?.[0];selectedSegment=first?0:null;cropDraft=null;previewTime=first?first.start:0;if(first)selectedPhoto=first.source;
+  loadStyle();const scene=currentScene();if(scene)$('captionText').value=scene.text;await updatePreview();
 }
 async function upload(files){
   if(!files.length)return;
   if(sourceBusy||photosLocked())throw new Error('현재 생성 작업이 끝난 뒤 사진을 추가해 주세요.');
   const target=job?.id,form=new FormData();for(const file of files)form.append('files',file);if(!target)form.append('domain',chosenDomain);
   sourceBusy=true;drawStatus();
-  try{if(hasUnsavedEdits())await persistEdits();job=await api(target?`/api/jobs/${target}/${job.workflow_version>=2?'candidates':'photos'}`:'/api/jobs',form);previewMode='photo';selectedPhoto=job.photo_order?.[0]??0;loadStyle();drawPhotos();drawScript();await updatePreview();await history();}
+  try{if(hasUnsavedEdits())await persistEdits();job=await api(target?`/api/jobs/${target}/${videoDomain()?'videos':job.workflow_version>=2?'candidates':'photos'}`:'/api/jobs',form);previewMode='photo';selectedPhoto=job.photo_order?.[0]??0;loadStyle();drawPhotos();drawScript();await updatePreview();await history();}
   finally{sourceBusy=false;$('files').value='';drawStatus();}
 }
 async function history(){const list=await api('/api/jobs');$('history').replaceChildren();for(const item of list.slice(0,10)){const button=document.createElement('button');button.className='history-job';button.textContent=`[${domainList.find(d=>d.id===item.domain)?.label||'숙소'}] ${item.name?item.name+' · ':''}사진 ${item.photos}장 · ${item.message}`;button.disabled=sourceBusy;button.onclick=action(()=>selectJob(item.id));$('history').append(button);}}
@@ -497,7 +556,7 @@ function mediaControls(kind,index){
 for(const radio of document.querySelectorAll('input[name=compositionMode]'))radio.onchange=()=>{$('aiControls').hidden=compositionMode()!=='ai';$('compositionHelp').textContent=compositionMode()==='ai'?(domainInfo()?.ui.ai_help||''):'선택한 순서를 그대로 사용합니다. 사진을 끌거나 이동 버튼으로 순서를 바꾸세요.';drawStatus();};
 $('targetCount').oninput=drawStatus;
 for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','speed'])$(id).addEventListener('input',()=>{dirtyStyle=true;drawStatus();});
-$('captionText').addEventListener('input',()=>{const scene=job?.storyboard?.scenes.find(s=>s.photos.includes(selectedPhoto));if(scene&&!planLocked()&&$('captionText').value.trim()){scene.text=$('captionText').value;planChanged();drawScript();}});
+$('captionText').addEventListener('input',()=>{const scene=currentScene();if(scene&&!planLocked()&&$('captionText').value.trim()){scene.text=$('captionText').value;planChanged();drawScript();}});
 $('recommend').onclick=action(async()=>{if(!$('targetCount').validity.valid)throw new Error('추천 장수는 1~60장입니다.');await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();job=await api('/api/composition',{job_id:job?.id,collection_id:collection?.id,photos:[...collectionSelected],mode:'ai',target_count:Number($('targetCount').value)});collectionSelected.clear();drawCollection();job=await api('/api/jobs/'+job.id);});});
 $('removeCandidates').onclick=action(async()=>{const active=new Set((job?.photos||[]).map(p=>p.sha256)),inUse=[...candidateSelected].filter(id=>active.has(id)).length;if(!window.confirm(`선택한 ${candidateSelected.size}장을 후보에서 제거할까요? AI 추천과 구성 선택에 더 이상 사용하지 않습니다.`+(inUse?`\n현재 영상에 쓰인 ${inUse}장도 영상 구성에서 빠집니다.`+(job.storyboard?' 대본은 다시 만들어야 합니다.':''):'')))return;await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();job=await api(`/api/jobs/${job.id}/candidates/remove`,{ids:[...candidateSelected]});candidateSelected.clear();await loadJob(job.id);});});
 $('applyCandidates').onclick=action(async()=>{if(!confirmDiscard())return;await planTransaction(async()=>{job=await api('/api/composition',{job_id:job.id,mode:'manual',photos:[...candidateSelected]});dirtyScript=dirtyStyle=dirtyFacts=false;candidateSelected.clear();await loadJob(job.id);});});

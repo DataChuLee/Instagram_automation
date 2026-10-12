@@ -52,6 +52,35 @@ def video_size(path):
     return tuple(map(int, match.groups()))
 
 
+def video_info(path):
+    """(width, height, seconds) of a video file, or a ValueError when ffmpeg cannot read it."""
+    process = subprocess.run([ffmpeg(), '-hide_banner', '-i', str(path)], capture_output=True,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    text = process.stderr.decode('utf-8', 'replace')
+    size = re.search(r'Video:.*?\b(\d{2,5})x(\d{2,5})\b', text)
+    duration = re.search(r'Duration: (\d+):(\d+):([\d.]+)', text)
+    if not size or not duration:
+        raise ValueError('읽을 수 없는 영상 파일입니다.')
+    rotate = re.search(r'rotate\s*:\s*(-?\d+)|displaymatrix: rotation of (-?[\d.]+)', text)
+    width, height = map(int, size.groups())
+    if rotate and abs(round(float(rotate.group(1) or rotate.group(2)))) % 180 == 90:
+        width, height = height, width  # Phone clips store portrait video as rotated landscape.
+    return width, height, int(duration[1]) * 3600 + int(duration[2]) * 60 + float(duration[3])
+
+
+def video_frame(path, seconds, target, width=None):
+    """Saves the frame at `seconds` as a JPEG, optionally scaled to `width` pixels wide."""
+    run('-ss', f'{max(seconds, 0):.3f}', '-i', path, '-frames:v', '1',
+        *(['-vf', f'scale={width}:-2'] if width else []), '-q:v', '3', target)
+
+
+def crop_filter(crop):
+    """ffmpeg filter that zooms a source into 1080x1920; same geometry as media.crop_video_frame."""
+    zoom, x, y = crop.get('zoom', 1.0), crop.get('x', 0.5), crop.get('y', 0.5)
+    return (f'scale=w={round(1080 * zoom)}:h={round(1920 * zoom)}:force_original_aspect_ratio=increase:flags=lanczos,'
+            f'crop=1080:1920:(iw-1080)*{x:.4f}:(ih-1920)*{y:.4f}')
+
+
 def shot_bounds(path, shots):
     """(start, end) seconds of each hard-cut shot in a clip, placing cuts at the strongest scene changes."""
     process = subprocess.run([ffmpeg(), '-hide_banner', '-i', str(path), '-an', '-vf',
@@ -162,6 +191,11 @@ def render(job, progress=lambda message: None, preview=False):
             raise RuntimeError(f'생성 영상이 {MIN_MOTION_SIDE}p보다 작아 1080×1920 영상에 사용할 수 없습니다.')
         for photo, (start, end) in zip(motion.photos, shot_bounds(source, len(motion.photos))):
             shots[photo] = (source, start, end)
+    fill = {}  # shot -> filter zooming it into 1080x1920; generated clips are just center-cropped.
+    for index, segment in enumerate(job.storyboard.segments):  # Video domains: scenes index these segments.
+        item = job.photos[segment.source]
+        shots[index] = (folder / item['file'], segment.start, segment.end)
+        fill[index] = crop_filter(item.get('crop', {}))
     for scene_index, scene in enumerate(job.storyboard.scenes):
         record = job.narration.get(str(scene_index), {})
         audio = folder / record.get('file', '__missing__')
@@ -209,7 +243,8 @@ def render(job, progress=lambda message: None, preview=False):
         run('-i', adjusted, '-af', 'apad', '-t', scene_duration, padded)
         audio_clips.append(padded)
         for photo_index, count, is_moving in zip(scene.photos, counts, moving):
-            progress(f'{photo_index + 1}/{len(job.photos)} 사진을 1080p로 합성 중입니다.')
+            progress(f'{photo_index + 1}/{len(job.storyboard.segments)} 구간을 1080p로 합성 중입니다.' if job.storyboard.segments
+                     else f'{photo_index + 1}/{len(job.photos)} 사진을 1080p로 합성 중입니다.')
             clip = export / f'clip-{len(clips):03}.mp4'
             clean_clip = export / f'clean-{len(clips):03}.mp4'
             if is_moving:
@@ -219,7 +254,7 @@ def render(job, progress=lambda message: None, preview=False):
                 # upscale 720p-class clips to 1080×1920 and split long shots into punch-in cuts.
                 speed = min(max(count / 30 / max(end - start, 0.1), 0.5), 2.0)
                 base = (f'trim=start={start:.3f}:end={end:.3f},setpts=(PTS-STARTPTS)*{speed:.4f},'
-                        f'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,fps=30,'
+                        f"{fill.get(photo_index, 'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920')},fps=30,"
                         f'tpad=stop_mode=clone:stop_duration={count/30+1},'
                         f"zoompan=z='{cut_zoom(count)}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=1080x1920:fps=30,setsar=1")
             else:
