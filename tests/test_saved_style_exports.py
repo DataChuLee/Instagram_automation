@@ -43,7 +43,7 @@ class SavedStyleAndExportTests(unittest.TestCase):
         first = self.upload()
         self.assertEqual(first['options']['caption']['font_size'], 64)
         style = {'caption': {'font_size': 90, 'x': 5, 'y': -10, 'color': '#FF0000', 'outline': 3,
-                             'background_opacity': 0.5, 'shadow': 0}, 'speed': 1.1}
+                             'background_opacity': 0.5, 'shadow': 0, 'align': 'center'}, 'speed': 1.1}
         response = self.client.post(f'/api/jobs/{first["id"]}/style', headers=self.headers, json=style)
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(self.client.get('/api/style').json()['caption'], style['caption'])
@@ -54,6 +54,54 @@ class SavedStyleAndExportTests(unittest.TestCase):
     def test_broken_saved_style_falls_back_to_defaults(self):
         (self.folder / 'style.json').write_text('{oops', encoding='utf-8')
         self.assertEqual(self.upload()['options']['caption']['font_size'], 64)
+
+    def test_photo_plan_preview_is_one_row_per_photo_and_only_persists_on_save(self):
+        from studio.models import Storyboard
+        original = self.upload()
+        job = store.read(original['id'])
+        job.photos = [dict(job.photos[0], sha256=str(i)) for i in range(4)]
+        job.photo_order = list(range(4))
+        job.storyboard = Storyboard(scenes=[
+            {'photos': [0, 1], 'text': '숙소에 이런 물 풍경까지 있다고요? 불빛이 켜진 건물 아래로 수영장이 펼쳐져요.'},
+            {'photos': [2, 3], 'text': '나무 사이로 물길이 이어져서 휴양지 분위기를 느끼며 쉬기 좋은 공간이에요.'}])
+        store.save(job)
+        response = self.client.get(f'/api/jobs/{job.id}?per_photo=true').json()
+        self.assertTrue(response['photo_plan_migration'])
+        self.assertEqual([s['photos'] for s in response['storyboard']['scenes']], [[0], [1], [2], [3]])
+        self.assertEqual(len(store.read(job.id).storyboard.scenes), 2)
+        saved = self.client.post(f'/api/jobs/{job.id}/storyboard', headers=self.headers, json=response['storyboard'])
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(len(store.read(job.id).storyboard.scenes), 4)
+        text = response['storyboard']['scenes'][0]['text']
+        cues = self.client.post(f'/api/jobs/{job.id}/caption-cues', headers=self.headers,
+                                json={'text': text, 'caption': {'font_size': 64}}).json()
+        from studio.media import caption_segments
+        from studio.models import CaptionStyle
+        self.assertEqual(cues, caption_segments(text, CaptionStyle()))
+        self.assertGreater(len(cues), 1)
+
+    def test_named_caption_presets_survive_and_apply_in_another_job(self):
+        first = {'name': '흰색 50', 'caption': {'font_size': 50, 'color': '#FFFFFF', 'align': 'left'}}
+        second = {'name': '파랑 20', 'caption': {'font_size': 20, 'color': '#0000FF', 'align': 'right'}}
+        for preset in (first, second):
+            response = self.client.post('/api/caption-presets', headers=self.headers, json=preset)
+            self.assertEqual(response.status_code, 200, response.text)
+        with TestClient(module.app) as reopened:
+            presets = reopened.get('/api/caption-presets').json()
+        self.assertEqual([p['name'] for p in presets], ['흰색 50', '파랑 20'])
+        job = self.upload()
+        response = self.client.post(f'/api/jobs/{job["id"]}/style', headers=self.headers,
+                                    json={'caption': presets[1]['caption']})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['options']['caption']['font_size'], 20)
+        self.assertEqual(response.json()['options']['caption']['align'], 'right')
+        updated = self.client.post('/api/caption-presets', headers=self.headers,
+                                   json={**first, 'caption': {'font_size': 70}})
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(len(self.client.get('/api/caption-presets').json()), 2)
+        invalid = self.client.post('/api/caption-presets', headers=self.headers,
+                                   json={'name': '  ', 'caption': {'font_size': 50}})
+        self.assertEqual(invalid.status_code, 422)
 
     def test_previous_files_stay_downloadable_after_edits(self):
         job = self.upload()
