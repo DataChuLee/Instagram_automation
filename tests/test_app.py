@@ -221,6 +221,18 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.json()['photos'][0]['file'], 'photo-000.jpg')
         for name in ('photo-000.jpg', 'photo-000-enhanced.jpg'):
             self.assertEqual(self.client.get(f'/api/jobs/{record.id}/files/{name}').status_code, 200)
+        image_url = f'/api/jobs/{record.id}/files/photo-000-enhanced.jpg'
+        self.assertNotIn('content-disposition', self.client.get(image_url).headers)
+        download = self.client.get(image_url + '?download=true')
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download.headers.get('content-disposition'),
+                         'attachment; filename="photo-000-enhanced.jpg"')
+        self.assertEqual(download.content,
+                         (self.folder / record.id / 'photo-000-enhanced.jpg').read_bytes())
+        with Image.open(io.BytesIO(download.content)) as image:
+            self.assertEqual(image.size, (1080, 1920))
+        self.assertEqual(self.client.get(
+            f'/api/jobs/{record.id}/files/job.json?download=true').status_code, 404)
         record = store.read(record.id)
         record.storyboard = Storyboard(scenes=[{'photos': [0], 'text': '숙소'}])
         store.save(record)
