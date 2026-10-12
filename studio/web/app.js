@@ -145,6 +145,7 @@ function planChanged(){dirtyScript=true;drawStatus();}
 function drawScript(){
   const panel=$('storyboard');panel.replaceChildren();
   if(!job?.storyboard){const p=document.createElement('p');p.className='muted';p.textContent='사진을 분석하면 장면별 대본이 여기에 나타납니다.';panel.append(p);drawMotion();return;}
+  drawScriptOptions(panel);
   job.storyboard.scenes.forEach((scene,index)=>{
     const row=document.createElement('div');row.className='scene';
     const number=document.createElement('span');number.className='scene-number';number.textContent=String(index+1).padStart(2,'0');
@@ -154,6 +155,24 @@ function drawScript(){
     const info=document.createElement('small');info.textContent='사진 '+scene.photos.map(n=>n+1).join(', ')+' · 음성과 화면 자막에 같은 문장 사용'+(job.storyboard.motion.some(m=>m.photos.some(p=>scene.photos.includes(p)))?' · 움직임 포함':'');
     body.append(text,info,mediaControls('voice',index));row.append(number,body);panel.append(row);
   });drawMotion();
+}
+function drawScriptOptions(panel){
+  const options=job.storyboard.script_options||[];if(options.length<2)return;
+  const box=document.createElement('div');box.className='script-options';box.setAttribute('role','radiogroup');box.setAttribute('aria-label','대본 후보');
+  const heading=document.createElement('h3');heading.textContent=`대본 후보 ${options.length}개 · 하나를 고른 뒤 아래에서 고칠 수 있어요`;box.append(heading);
+  options.forEach((option,index)=>{
+    const chosen=index===job.storyboard.script_choice,card=document.createElement('button');card.type='button';card.className='script-option';card.setAttribute('role','radio');card.setAttribute('aria-checked',String(chosen));card.disabled=planLocked();
+    const title=document.createElement('strong');title.textContent=`${index+1}. ${option.title}`+(chosen?' · 사용 중':'');const text=document.createElement('p');text.textContent=option.texts.join(' ');card.append(title,text);
+    card.onclick=()=>chooseScript(index);box.append(card);
+  });panel.append(box);
+}
+function chooseScript(index){
+  const plan=job.storyboard,current=plan.script_options[plan.script_choice];
+  if(index===plan.script_choice||planLocked())return;
+  if(current&&plan.scenes.some((scene,i)=>scene.text!==current.texts[i])&&!window.confirm('직접 고친 대본이 선택한 후보로 바뀌어요. 계속할까요?'))return;
+  plan.script_choice=index;plan.scenes.forEach((scene,i)=>{scene.text=plan.script_options[index].texts[i];});
+  const scene=plan.scenes.find(s=>s.photos.includes(selectedPhoto));if(scene)$('captionText').value=scene.text;
+  planChanged();drawScript();queuePreview();
 }
 function drawMotion(){
   const prompts=$('motionPrompts');prompts.replaceChildren();
