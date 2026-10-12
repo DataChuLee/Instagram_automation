@@ -42,7 +42,29 @@ async function api(path, body, binary=false) {
 }
 function showError(error){uiError=error.message||String(error);$('status').className='error';$('statusTitle').textContent='확인이 필요해요.';$('statusDetail').textContent=uiError;}
 function action(fn){return async()=>{uiError=null;try{await fn();}catch(error){showError(error);}};}
-function hasUnsavedEdits(){return Boolean(job&&(dirtyScript||dirtyStyle));}
+function hasUnsavedEdits(){return Boolean(job&&(dirtyScript||dirtyStyle||dirtyFacts));}
+// Domain schema (stay, shopping): wording, features and user-entered facts come from /api/domains.
+let domainList=[],chosenDomain='stay',dirtyFacts=false,domainKey='';
+try{chosenDomain=localStorage.getItem('studioDomain')||'stay';}catch{}
+function domainInfo(id=job?.domain||chosenDomain){return domainList.find(d=>d.id===id)||domainList[0]||null;}
+function lines(element,text){element.replaceChildren();String(text||'').split('<br>').forEach((part,i)=>{if(i)element.append(document.createElement('br'));element.append(part);});}
+function drawDomain(){
+  const id=job?.domain||chosenDomain,info=domainInfo(id);
+  for(const tab of document.querySelectorAll('#domainTabs [data-domain]')){const on=tab.dataset.domain===id;tab.setAttribute('aria-checked',String(on));tab.disabled=sourceBusy||(Boolean(job)&&!on);tab.title=job&&!on?'영상 종류는 새 작업에서 바꿀 수 있어요':'';}
+  if(!info)return;
+  const key=`${info.id}|${job?.id||''}`;if(key===domainKey)return;domainKey=key;
+  const ui=info.ui;$('introText').textContent=ui.intro||'';$('uploadTitle').textContent=ui.upload_title||'';
+  lines($('previewTitle'),ui.preview_title);lines($('previewText'),ui.preview_text);
+  $('linkSource').hidden=!info.features.link_collection;
+  $('enhance').hidden=!info.features.enhance;if(ui.enhance_label)$('enhance').textContent=ui.enhance_label;
+  document.querySelector('input[name=compositionMode][value=ai]').closest('label').hidden=!info.features.ai_composition;
+  $('captionText').defaultValue=ui.caption_default||'';if(!job?.storyboard)$('captionText').value=$('captionText').defaultValue;
+  if(compositionMode()==='ai')$('compositionHelp').textContent=ui.ai_help||'';
+  const fields=$('factsFields');fields.replaceChildren();$('factsPanel').hidden=!job||!info.facts.length;
+  for(const fact of info.facts){const label=document.createElement('label');label.className='field';label.textContent=fact.label;const input=document.createElement(fact.key==='memo'?'textarea':'input');input.dataset.fact=fact.key;input.maxLength=300;input.value=job?.facts?.[fact.key]||'';input.oninput=()=>{dirtyFacts=true;drawStatus();};label.append(input);fields.append(label);}
+}
+function factsValue(){const value={};for(const input of document.querySelectorAll('#factsFields [data-fact]'))value[input.dataset.fact]=input.value;return value;}
+for(const tab of document.querySelectorAll('#domainTabs [data-domain]'))tab.onclick=()=>{if(job||sourceBusy)return;chosenDomain=tab.dataset.domain;try{localStorage.setItem('studioDomain',chosenDomain);}catch{}domainKey='';drawStatus();};
 function confirmDiscard(){return !hasUnsavedEdits()||window.confirm('저장하지 않은 변경 사항이 있어요. 변경 사항을 버리고 이동할까요? 취소하면 계속 편집할 수 있어요.');}
 window.addEventListener('beforeunload',event=>{if(hasUnsavedEdits()){event.preventDefault();event.returnValue='';}});
 function numericValid(){return numericControls.every(id=>$(id+'Input').validity.valid);}
@@ -207,6 +229,7 @@ async function savePlan(){
 async function persistPlan(){job={...await api(`/api/jobs/${job.id}/storyboard`,job.storyboard),preview_stale:true,media_ready:false};dirtyScript=false;drawScript();}
 async function persistEdits(){
   const settings=options();
+  if(dirtyFacts){job=await api(`/api/jobs/${job.id}/facts`,factsValue());dirtyFacts=false;}
   if(dirtyScript)await persistPlan();
   job={...await api(`/api/jobs/${job.id}/style`,settings),preview_stale:true,media_ready:false};dirtyStyle=false;
   job=await api('/api/jobs/'+job.id);
@@ -222,6 +245,7 @@ $('saveEdits').onclick=action(savePlan);
 function photosLocked(){return Boolean(job&&(busyStates.has(job.state)||job.pending_media||(job.workflow_version<2&&(job.storyboard||Object.keys(job.generated).length||Object.keys(job.narration).length||job.result))));}
 function drawStatus(){
   const busy=sourceBusy||(job&&busyStates.has(job.state));$('photoGrid').classList.toggle('sortable',Boolean(job)&&!planLocked());
+  drawDomain();for(const input of document.querySelectorAll('#factsFields [data-fact]'))input.disabled=Boolean(busy);
   const generated=job&&job.workflow_version<2&&(Object.keys(job.generated).length||Object.keys(job.narration).length||job.result);
   $('analyze').disabled=!job||busy||Boolean(generated)||!numericValid(); $('enhance').disabled=!job?.photos.length||enhanceLocked(); $('enhanceHelp').hidden=!job?.photos.length||Boolean(job.storyboard); $('saveStyle').disabled=!job||busy||!numericValid(); $('quote').disabled=!job?.storyboard||busy||!numericValid()||!planValid();
   $('newJob').disabled=sourceBusy; $('files').disabled=sourceBusy||photosLocked();
@@ -265,19 +289,19 @@ async function selectJob(id){
 }
 async function loadJob(id){
   const next=await api('/api/jobs/'+id);
-  resetPreview();job=next;dirtyScript=dirtyStyle=false;candidateSelected.clear();
+  resetPreview();job=next;dirtyScript=dirtyStyle=dirtyFacts=false;candidateSelected.clear();
   selectedPhoto=job.photo_order?.[0]??job.storyboard?.scenes[0]?.photos[0]??0;previewMode=job.preview||job.result?'video':'photo';
   loadStyle();const scene=job.storyboard?.scenes.find(s=>s.photos.includes(selectedPhoto));if(scene)$('captionText').value=scene.text;await updatePreview();
 }
 async function upload(files){
   if(!files.length)return;
   if(sourceBusy||photosLocked())throw new Error('현재 생성 작업이 끝난 뒤 사진을 추가해 주세요.');
-  const target=job?.id,form=new FormData();for(const file of files)form.append('files',file);
+  const target=job?.id,form=new FormData();for(const file of files)form.append('files',file);if(!target)form.append('domain',chosenDomain);
   sourceBusy=true;drawStatus();
   try{if(hasUnsavedEdits())await persistEdits();job=await api(target?`/api/jobs/${target}/${job.workflow_version>=2?'candidates':'photos'}`:'/api/jobs',form);previewMode='photo';selectedPhoto=job.photo_order?.[0]??0;loadStyle();drawPhotos();drawScript();await updatePreview();await history();}
   finally{sourceBusy=false;$('files').value='';drawStatus();}
 }
-async function history(){const list=await api('/api/jobs');$('history').replaceChildren();for(const item of list.slice(0,10)){const button=document.createElement('button');button.className='history-job';button.textContent=`${item.name?item.name+' · ':''}사진 ${item.photos}장 · ${item.message}`;button.disabled=sourceBusy;button.onclick=action(()=>selectJob(item.id));$('history').append(button);}}
+async function history(){const list=await api('/api/jobs');$('history').replaceChildren();for(const item of list.slice(0,10)){const button=document.createElement('button');button.className='history-job';button.textContent=`[${domainList.find(d=>d.id===item.domain)?.label||'숙소'}] ${item.name?item.name+' · ':''}사진 ${item.photos}장 · ${item.message}`;button.disabled=sourceBusy;button.onclick=action(()=>selectJob(item.id));$('history').append(button);}}
 async function connections(){const value=await api('/api/connections');connectionState=value;$('codexState').textContent=value.codex?'ChatGPT 구독 연결됨':'로그인이 필요합니다';$('fishState').textContent=value.fish?'Fish MCP 연결됨 · 움직임·Drama3 음성':'패키지 크레딧 계정 연결 필요';$('loginMessage').textContent=value.codex_login;$('connectMessage').textContent=value.message;if(value.workspaces.length){const old=$('workspace').value;$('workspace').replaceChildren();for(const item of value.workspaces){const option=document.createElement('option');option.value=item.workspace_id;option.textContent=item.workspace_name;$('workspace').append(option);}if([...$('workspace').options].some(o=>o.value===old))$('workspace').value=old;}drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));return value;}
 function collectionControls(){
   const collecting=collection?.status==='in_progress',locked=sourceBusy||photosLocked();
@@ -333,7 +357,7 @@ $('clearCollection').onclick=()=>{collectionSelected.clear();drawCollection();};
 $('importPhotos').onclick=action(async()=>{
   if(!confirmDiscard())return;
   sourceBusy=true;drawStatus();
-  try{job=await api('/api/composition',{collection_id:collection.id,photos:[...collectionSelected],job_id:job?.id,mode:'manual'});dirtyScript=dirtyStyle=false;previewMode='photo';collectionSelected.clear();selectedPhoto=0;loadStyle();drawPhotos();drawScript();await updatePreview();await history();}
+  try{job=await api('/api/composition',{collection_id:collection.id,photos:[...collectionSelected],job_id:job?.id,mode:'manual'});dirtyScript=dirtyStyle=dirtyFacts=false;previewMode='photo';collectionSelected.clear();selectedPhoto=0;loadStyle();drawPhotos();drawScript();await updatePreview();await history();}
   finally{sourceBusy=false;drawStatus();}
 });
 async function restoreCollection(){
@@ -350,7 +374,7 @@ for(const id of numericControls){
 }
 $('newJob').onclick=()=>{
   if(!confirmDiscard())return;
-  resetPreview();job=null;dirtyScript=dirtyStyle=false;uiError=null;candidateSelected.clear();
+  resetPreview();job=null;dirtyScript=dirtyStyle=dirtyFacts=false;uiError=null;candidateSelected.clear();
   for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','captionText'])$(id).value=$(id).defaultValue;
   $('speed').value='1';for(const id of numericControls){$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}
   $('files').value='';motionOptions();updateOutputs();drawPhotos();drawScript();drawStatus();
@@ -434,7 +458,7 @@ function drawPreviewStatus(busy){
   $('paceWarning').textContent=(job?.preview?.warnings||[]).join(' ');
   $('recommend').disabled=busy||(!job?.candidates?.length&&!collectionSelected.size)||Boolean(job?.pending_media)||!$('targetCount').validity.valid;
   $('versionsPanel').hidden=!job?.versions?.length;$('versionsList').replaceChildren();
-  for(const [i,v] of (job?.versions||[]).entries()){const button=document.createElement('button');button.className='quiet';button.textContent=`구성 ${i+1} · 사진 ${v.photos.length}장 복원`;button.disabled=busy;button.onclick=action(async()=>{if(!confirmDiscard())return;await planTransaction(async()=>{job=await api(`/api/jobs/${job.id}/versions/${i}`,{});dirtyScript=dirtyStyle=false;await loadJob(job.id);});});$('versionsList').append(button);}
+  for(const [i,v] of (job?.versions||[]).entries()){const button=document.createElement('button');button.className='quiet';button.textContent=`구성 ${i+1} · 사진 ${v.photos.length}장 복원`;button.disabled=busy;button.onclick=action(async()=>{if(!confirmDiscard())return;await planTransaction(async()=>{job=await api(`/api/jobs/${job.id}/versions/${i}`,{});dirtyScript=dirtyStyle=dirtyFacts=false;await loadJob(job.id);});});$('versionsList').append(button);}
   if(previewMode==='video')showVideo();
   drawPhotoNav();
 }
@@ -470,13 +494,13 @@ function mediaControls(kind,index){
   }
   return box;
 }
-for(const radio of document.querySelectorAll('input[name=compositionMode]'))radio.onchange=()=>{$('aiControls').hidden=compositionMode()!=='ai';$('compositionHelp').textContent=compositionMode()==='ai'?'첨부했거나 수집 목록에서 고른 후보만 비교해 숙소의 매력을 보여 주는 순서로 추천합니다.':'선택한 순서를 그대로 사용합니다. 사진을 끌거나 이동 버튼으로 순서를 바꾸세요.';drawStatus();};
+for(const radio of document.querySelectorAll('input[name=compositionMode]'))radio.onchange=()=>{$('aiControls').hidden=compositionMode()!=='ai';$('compositionHelp').textContent=compositionMode()==='ai'?(domainInfo()?.ui.ai_help||''):'선택한 순서를 그대로 사용합니다. 사진을 끌거나 이동 버튼으로 순서를 바꾸세요.';drawStatus();};
 $('targetCount').oninput=drawStatus;
 for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','speed'])$(id).addEventListener('input',()=>{dirtyStyle=true;drawStatus();});
 $('captionText').addEventListener('input',()=>{const scene=job?.storyboard?.scenes.find(s=>s.photos.includes(selectedPhoto));if(scene&&!planLocked()&&$('captionText').value.trim()){scene.text=$('captionText').value;planChanged();drawScript();}});
 $('recommend').onclick=action(async()=>{if(!$('targetCount').validity.valid)throw new Error('추천 장수는 1~60장입니다.');await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();job=await api('/api/composition',{job_id:job?.id,collection_id:collection?.id,photos:[...collectionSelected],mode:'ai',target_count:Number($('targetCount').value)});collectionSelected.clear();drawCollection();job=await api('/api/jobs/'+job.id);});});
 $('removeCandidates').onclick=action(async()=>{const active=new Set((job?.photos||[]).map(p=>p.sha256)),inUse=[...candidateSelected].filter(id=>active.has(id)).length;if(!window.confirm(`선택한 ${candidateSelected.size}장을 후보에서 제거할까요? AI 추천과 구성 선택에 더 이상 사용하지 않습니다.`+(inUse?`\n현재 영상에 쓰인 ${inUse}장도 영상 구성에서 빠집니다.`+(job.storyboard?' 대본은 다시 만들어야 합니다.':''):'')))return;await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();job=await api(`/api/jobs/${job.id}/candidates/remove`,{ids:[...candidateSelected]});candidateSelected.clear();await loadJob(job.id);});});
-$('applyCandidates').onclick=action(async()=>{if(!confirmDiscard())return;await planTransaction(async()=>{job=await api('/api/composition',{job_id:job.id,mode:'manual',photos:[...candidateSelected]});dirtyScript=dirtyStyle=false;candidateSelected.clear();await loadJob(job.id);});});
+$('applyCandidates').onclick=action(async()=>{if(!confirmDiscard())return;await planTransaction(async()=>{job=await api('/api/composition',{job_id:job.id,mode:'manual',photos:[...candidateSelected]});dirtyScript=dirtyStyle=dirtyFacts=false;candidateSelected.clear();await loadJob(job.id);});});
 $('previewVideo').onclick=action(async()=>{await planTransaction(async()=>{await persistEdits();previewMode='video';await api(`/api/jobs/${job.id}/preview-video`,{});job=await api('/api/jobs/'+job.id);});});
 $('exportFinal').onclick=action(async()=>{await planTransaction(async()=>{await api(`/api/jobs/${job.id}/render`,{});job=await api('/api/jobs/'+job.id);});});
 function resetPreview(){
@@ -527,4 +551,4 @@ document.addEventListener('keydown',event=>{
   event.preventDefault();action(()=>stepPhoto(event.key==='ArrowLeft'?-1:1))();
 });
 new ResizeObserver(entries=>{document.documentElement.style.setProperty('--toolbar-offset',`${Math.ceil(entries[0].target.getBoundingClientRect().height)+24}px`);}).observe(document.querySelector('.workflow-toolbar'));
-drawStatus();restoreCollection();history().catch(showError);api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
+drawStatus();restoreCollection();api('/api/domains').then(list=>{domainList=list;domainKey='';drawStatus();return history();}).catch(showError);api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);

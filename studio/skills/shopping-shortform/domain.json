@@ -1,0 +1,34 @@
+{
+  "id": "shopping",
+  "label": "쇼핑",
+  "object_types": [
+    {"name": "Product", "label": "상품", "description": "영상으로 소개하는 상품 하나. 대본에서는 이름 대신 '이거·이것'으로 가리킨다",
+     "properties": [
+       {"name": "name", "label": "상품명", "source": "user"},
+       {"name": "memo", "label": "핵심 특징·혜택", "source": "user"},
+       {"name": "color", "label": "색"}, {"name": "material", "label": "소재·제형"}, {"name": "components", "label": "구성품"}],
+     "links": [{"name": "features", "target": "Feature"}, {"name": "scenes", "target": "UseScene"}]},
+    {"name": "Feature", "label": "특징", "description": "사진이나 사용자 입력으로 확인되는 장점 하나",
+     "properties": [{"name": "claim", "label": "장점"}, {"name": "evidence", "label": "근거(사진·입력)"}],
+     "links": [{"name": "product", "target": "Product"}]},
+    {"name": "UseScene", "label": "사용 장면", "description": "상품을 쓰는 상황과 사용 전후 결과",
+     "properties": [{"name": "problem", "label": "곤란한 상황"}, {"name": "action", "label": "사용 동작"}, {"name": "result", "label": "결과"}],
+     "links": [{"name": "product", "target": "Product"}]},
+    {"name": "Photo", "label": "사진", "description": "영상에 쓰는 상품 사진 한 장",
+     "properties": [{"name": "angle", "label": "컷 종류(대표·디테일·사용·결과)"}],
+     "links": [{"name": "shows", "target": "Product | UseScene"}]}
+  ],
+  "features": {"link_collection": false, "enhance": true, "ai_composition": true},
+  "ui": {
+    "intro": "상품 사진을 넣고, 나만의 자막을 더하세요.",
+    "upload_title": "상품 사진을 여기에 넣어 주세요",
+    "caption_default": "저 이거 몰라서 혼났어요.",
+    "preview_title": "SHOP<br>IN FRAME.",
+    "preview_text": "사진을 넣고<br>상품 이야기를 시작하세요.",
+    "ai_help": "첨부한 후보만 비교해 상품의 쓰임과 결과가 잘 보이는 순서로 추천합니다.",
+    "recommend_progress": "전체 후보 사진을 평가하고 상품 소개 구성을 추천합니다.",
+    "enhance_label": "고화질 변환 · 배경 정리 ↗",
+    "photo_name": "상품 사진"
+  },
+  "disclosure": "광고 · 제휴 링크 포함"
+}

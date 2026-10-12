@@ -75,6 +75,20 @@ def caption_image(text: str, style: CaptionStyle | None = None) -> Image.Image:
     return layer
 
 
+def badge_image(text: str, size=30) -> Image.Image:
+    """A small fixed notice (e.g. an affiliate disclosure) at the top left, below the Reels header."""
+    font = ImageFont.truetype(str(font_path()), size)
+    layer = Image.new('RGBA', SIZE)
+    draw = ImageDraw.Draw(layer)
+    left, top = 48, 230
+    bounds = draw.textbbox((left, top), text, font=font)
+    pad = round(size * 0.45)
+    draw.rounded_rectangle((bounds[0] - pad, bounds[1] - pad, bounds[2] + pad, bounds[3] + pad),
+                           radius=pad, fill=(0, 0, 0, 140))
+    draw.text((left, top), text, font=font, fill=(255, 255, 255, 235))
+    return layer
+
+
 def split_words(text: str, limit: int) -> list[str]:
     lines, line = [], ''
     for word in text.split():

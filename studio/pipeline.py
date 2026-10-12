@@ -5,7 +5,7 @@ import hashlib
 import uuid
 from pathlib import Path
 
-from . import assets, codex, composition, enhance, recommendation, store
+from . import assets, codex, composition, domains, enhance, recommendation, store
 from .media import crop_photo
 from .models import MIN_MOTION_SIDE, motion_fingerprint, stable_hash
 from .paths import job_path
@@ -63,6 +63,7 @@ class Pipeline:
         self.update(job, 'enhancing', f'고화질 변환 중 · 0/{total}장')
         folder = job_path(job_id)
         gate = asyncio.Semaphore(enhance.CONCURRENCY)
+        domain = job.domain
 
         async def one(index):
             async with gate:
@@ -70,7 +71,7 @@ class Pipeline:
                 original = photo.get('original_file', photo['file'])
                 target = f'{Path(original).stem}-enhanced.jpg'
                 try:
-                    await enhance.enhance_photo(folder / original, folder / target)
+                    await enhance.enhance_photo(folder / original, folder / target, domain=domain)
                     outcome = {'file': target}
                 except enhance.UsageLimit:
                     raise
@@ -113,7 +114,7 @@ class Pipeline:
 
     async def recommend(self, job_id):
         job = store.read(job_id)
-        self.update(job, 'recommending', '전체 후보 사진을 평가하고 숙소 소개 구성을 추천합니다.')
+        self.update(job, 'recommending', domains.load(job.domain).text('recommend_progress', '전체 후보 사진을 평가하고 구성을 추천합니다.'))
         working = job.model_copy(deep=True)
         def progress(message):
             job.message = message

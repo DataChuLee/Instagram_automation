@@ -181,6 +181,8 @@ class Job(BaseModel):
     video_model: str = VIDEO_MODEL
     video_parameters: dict = Field(default_factory=lambda: dict(MOTION_PARAMETERS))
     model_probe: dict | None = None  # Uploaded sample image reused for free per-model estimates.
+    domain: Literal['stay', 'shopping'] = 'stay'  # Fixed at creation; picks the schema, prompts and UI wording.
+    facts: dict[str, str] = Field(default_factory=dict)  # User-entered schema properties, e.g. product name.
 
     def video_choice(self):
         return {'model': self.video_model, 'parameters': self.video_parameters}

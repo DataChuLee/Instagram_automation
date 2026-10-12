@@ -10,13 +10,13 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import assets, codex, collector, composition, enhance, recommendation, store, video_models
+from . import assets, codex, collector, composition, domains, enhance, recommendation, store, video_models
 from .drama import Drama
 from .fish import Fish
 from .media import crop_photo, preview_image
@@ -42,8 +42,15 @@ def saved_options():
         return CreateOptions()
 
 
-def new_job(**values):
-    return Job(id=uuid.uuid4().hex, options=saved_options(), **values)
+def new_job(domain='stay', **values):
+    domains.load(domain)  # Rejects an unknown domain before anything is saved.
+    return Job(id=uuid.uuid4().hex, options=saved_options(), domain=domain, **values)
+
+
+def link_collection(job_or_domain):
+    domain = domains.load(job_or_domain if isinstance(job_or_domain, str) else job_or_domain.domain)
+    if not domain.features.link_collection:
+        raise ValueError(f'{domain.label} 작업에서는 링크로 사진을 가져올 수 없습니다. 사진을 직접 넣어 주세요.')
 
 
 def export_files(job):
@@ -210,13 +217,33 @@ async def connect_drama():
 @app.get('/api/jobs')
 async def jobs():
     return [{'id': job.id, 'state': job.state, 'photos': len(job.photos), 'message': job.message,
-             'name': ' / '.join(source['name'] for source in job.sources)}
+             'name': ' / '.join(source['name'] for source in job.sources), 'domain': job.domain}
             for job in store.list_jobs()]
 
 
+@app.get('/api/domains')
+async def list_domains():
+    return [domains.public(domain) for domain in domains.all()]
+
+
 @app.post('/api/jobs')
-async def upload(files: list[UploadFile] = File(...)):
-    return add_photos(new_job(workflow_version=2), await read_uploads(files)).model_dump()
+async def upload(files: list[UploadFile] = File(...), domain: str = Form('stay')):
+    job = new_job(domain, workflow_version=2)
+    return add_photos(job, await read_uploads(files)).model_dump()
+
+
+@app.post('/api/jobs/{job_id}/facts')
+async def save_facts(job_id: str, value: dict):
+    job = store.read(job_id)
+    editable(job)
+    allowed = {prop.name for _, prop in domains.load(job.domain).facts()}
+    if not isinstance(value, dict) or set(value) - allowed:
+        raise ValueError('이 작업에 저장할 수 없는 정보가 있습니다.')
+    if any(not isinstance(text, str) or len(text.strip()) > 300 for text in value.values()):
+        raise ValueError('입력한 정보는 항목마다 300자 이내로 적어 주세요.')
+    job.facts = {key: text.strip() for key, text in value.items() if text.strip()}
+    store.save(job)
+    return job.model_dump()
 
 
 async def read_uploads(files):
@@ -344,13 +371,14 @@ async def collection_photo(collection_id: str, photo_id: str):
 @app.post('/api/jobs/import')
 async def import_collection(value: dict):
     collection_id = value.get('collection_id', '')
+    job = store.read(value['job_id']) if value.get('job_id') else new_job()
+    link_collection(job)
     manifest = collector.read(collection_id)
     if manifest['status'] == 'in_progress':
         raise ValueError('수집이 끝난 뒤 사진을 선택해 주세요.')
     selected = value.get('photos')
     if not isinstance(selected, list) or not 1 <= len(selected) <= 60 or any(not isinstance(p, str) for p in selected):
         raise ValueError('가져올 사진을 1~60장 선택해 주세요.')
-    job = store.read(value['job_id']) if value.get('job_id') else new_job()
     photos_editable(job)
     inputs = []
     total = 0
@@ -522,8 +550,10 @@ def editable(job):
 
 @app.post('/api/composition')
 async def configure_composition(value: dict):
-    job = store.read(value['job_id']) if value.get('job_id') else new_job(workflow_version=2)
+    job = store.read(value['job_id']) if value.get('job_id') else new_job(value.get('domain', 'stay'), workflow_version=2)
     editable(job)
+    if value.get('collection_id'):
+        link_collection(job)
     mode = value.get('mode', 'manual')
     if mode not in {'manual', 'ai'}:
         raise ValueError('구성 방식이 올바르지 않습니다.')
@@ -730,7 +760,7 @@ async def preview(job_id: str, value: dict):
     if not 0 <= index < len(job.photos):
         raise ValueError('사진 번호가 올바르지 않습니다.')
     caption = CaptionStyle.model_validate(value.get('caption', {}))
-    text = value.get('text', '이런 숙소, 어때요?')[:320]
+    text = value.get('text', domains.load(job.domain).text('caption_default', '자막'))[:320]
     focus = next(((item.x, item.y) for item in job.storyboard.crop_focus if item.photo == index),
                  (0.5, 0.5)) if job.storyboard else (0.5, 0.5)
     if 'focus' in value:

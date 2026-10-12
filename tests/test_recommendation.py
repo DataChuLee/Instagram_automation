@@ -23,7 +23,7 @@ class RecommendationTests(unittest.IsolatedAsyncioTestCase):
             if name.startswith('batch-'):
                 ids = [c['id'] for c in job.candidates[len(batches)*24:(len(batches)+1)*24]]
                 batches.append(ids)
-                return {'photos': [{'id': i, 'category': '객실', 'room': '', 'facts': ['침대'],
+                return {'photos': [{'id': i, 'category': '객실', 'subject': '', 'facts': ['침대'],
                                    'quality': 4, 'reason': '선명한 객실'} for i in ids]}
             return {'ids': ['64'], 'reasons': [{'id': '64', 'reason': '대표 객실'}]}
         with tempfile.TemporaryDirectory() as directory, \
@@ -40,7 +40,7 @@ class RecommendationTests(unittest.IsolatedAsyncioTestCase):
         from studio import recommendation
         job = Job(id='a' * 32, target_count=2,
                   candidates=[{'id': 'a', 'file': 'x.jpg'}, {'id': 'b', 'file': 'x.jpg'}])
-        assessment = {'photos': [{'id': i, 'category': '객실', 'room': '', 'facts': [],
+        assessment = {'photos': [{'id': i, 'category': '객실', 'subject': '', 'facts': [],
                                   'quality': 4, 'reason': '사진'} for i in ['a', 'b']]}
         for ids in [['a', 'a'], ['a', 'unknown']]:
             with tempfile.TemporaryDirectory() as directory, \

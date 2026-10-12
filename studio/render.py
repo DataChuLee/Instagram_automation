@@ -8,7 +8,8 @@ import shutil
 from array import array
 from pathlib import Path
 
-from .media import allocate_frames, caption_image, caption_segments, crop_photo, cut_zoom, srt_time
+from . import domains
+from .media import allocate_frames, badge_image, caption_image, caption_segments, crop_photo, cut_zoom, srt_time
 from .assets import render_revision
 from .models import MIN_MOTION_SIDE
 from .paths import RESOURCES, job_path
@@ -146,6 +147,11 @@ def render(job, progress=lambda message: None, preview=False):
             raise RuntimeError('선택한 움직임 영상이 아직 없습니다. 생성 작업을 먼저 완료해 주세요.')
     export = folder / 'render'
     export.mkdir(exist_ok=True)
+    # A domain's notice (shopping: the affiliate disclosure) stays on the final reel, never on the clean video.
+    disclosure = domains.load(job.domain).disclosure
+    badge = export / 'disclosure.png' if disclosure else None
+    if badge:
+        badge_image(disclosure).save(badge)
     clips, clean_clips, audio_clips, subtitles, timeline = [], [], [], [], []
     offset = 0
     focus = {item.photo: (item.x, item.y) for item in job.storyboard.crop_focus}
@@ -233,6 +239,10 @@ def render(job, progress=lambda message: None, preview=False):
                 output = f'cap{part}'
                 filters.append(f"[{current}][{part+1}:v]overlay=0:0:format=auto:enable='gte(t,{local_start})*lt(t,{local_end})'[{output}]")
                 current = output
+            if badge:
+                inputs += ['-loop', '1', '-i', badge]
+                filters.append(f'[{current}][{len(caption_paths)+1}:v]overlay=0:0:format=auto[badge]')
+                current = 'badge'
             filters.append(f'[{current}]format=yuv420p[v]')
             run(*inputs, '-filter_complex', ';'.join(filters),
                 '-map', '[clean]', *encoding, clean_clip, '-map', '[v]', *encoding, clip)
