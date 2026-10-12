@@ -38,7 +38,8 @@ class ScriptOptionTests(unittest.TestCase):
         plan = self.analyze(answer())
         self.assertEqual([o.title for o in plan.script_options], ['후보0', '후보1', '후보2'])
         self.assertEqual(plan.script_choice, 0)
-        self.assertEqual([s.text for s in plan.scenes], ['후보0 장면0.', '후보0 장면1.'])
+        self.assertEqual([s.text for s in plan.scenes], ['후보0 장면0.'] * 5 + ['후보0 장면1.'] * 5)
+        self.assertEqual([s.photos for s in plan.scenes], [[i] for i in range(10)])
 
     def test_analysis_rejects_too_few_or_misaligned_candidates(self):
         with self.assertRaisesRegex(ValueError, '부족'):
