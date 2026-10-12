@@ -40,13 +40,14 @@ def plan_clips(order: list[int], total=TARGET_SECONDS) -> list[dict]:
 
 
 class CaptionStyle(BaseModel):
-    font_size: int = Field(64, ge=28, le=120)
+    font_size: int = Field(64, ge=20, le=120)
     x: float = Field(0, ge=-35, le=35)
     y: float = Field(13, ge=-35, le=35)
     color: str = Field('#CCCACC', pattern=r'^#[0-9a-fA-F]{6}$')
     outline: int = Field(8, ge=0, le=16)
     background_opacity: float = Field(0.2, ge=0, le=1)
     shadow: int = Field(3, ge=0, le=12)
+    align: Literal['left', 'center', 'right'] = 'center'
 
     def center(self, width=1080, height=1920):
         # VLLO screenshot calibration: positive Y moves upward from center.
@@ -138,6 +139,46 @@ class Storyboard(BaseModel):
     motion_recommendations: list[MotionRecommendation] = Field(default_factory=list)
     selection_reasons: dict[str, str] = Field(default_factory=dict)
 
+    def per_photo(self):
+        """Expand grouped photo narration without changing the words or candidate order."""
+        if self.segments or all(len(scene.photos) == 1 for scene in self.scenes):
+            return self.model_copy(deep=True)
+        def parts(text, count):
+            words = text.split()
+            if len(words) < count:
+                return [text.strip()] * count
+            result = []
+            for remaining in range(count, 1, -1):
+                target = len(' '.join(words)) / remaining
+                boundary = min(range(1, len(words) - remaining + 2),
+                               key=lambda n: abs(len(' '.join(words[:n])) - target))
+                result.append(' '.join(words[:boundary]))
+                words = words[boundary:]
+            return result + [' '.join(words)]
+        plan = self.model_copy(deep=True)
+        plan.scenes = [Scene(photos=[photo], text=text) for scene in self.scenes
+                       for photo, text in zip(scene.photos, parts(scene.text, len(scene.photos)))]
+        for original, option in zip(self.script_options, plan.script_options):
+            option.texts = [text for scene, value in zip(self.scenes, original.texts)
+                            for text in parts(value, len(scene.photos))]
+        return plan
+
+    def validate_silent(self, photo_count):
+        if not 8 <= photo_count <= 10 or len(self.scenes) != photo_count or any(len(s.photos) != 1 for s in self.scenes):
+            raise ValueError('음성X는 8~10장의 사진에 장면을 하나씩 배치합니다. 대본을 다시 분석해 주세요.')
+        def copy(text, last):
+            lines = [line.strip() for line in text.strip().splitlines()]
+            if len(lines) != 2 or any(not line or len(line) > 18 for line in lines):
+                raise ValueError('음성X 자막은 줄마다 18자 이하인 두 줄로 작성해 주세요.')
+            if last:
+                lines[1] = '댓글 남겨주세요'
+            return '\n'.join(lines)
+        for index, scene in enumerate(self.scenes):
+            scene.text = copy(scene.text, index == photo_count - 1)
+        for option in self.script_options:
+            option.texts = [copy(text, i == photo_count - 1) for i, text in enumerate(option.texts)]
+        return self
+
     @classmethod
     def validate_plan(cls, value, photo_count: int, max_motion: int, expected_order=None):
         plan = cls.model_validate(value)
@@ -189,6 +230,16 @@ class CreateOptions(BaseModel):
     speed: float = Field(1.0, ge=0.75, le=1.25)
 
 
+class CaptionPresetRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    caption: CaptionStyle
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def clean_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
 class ApproveRequest(BaseModel):
     quote_id: str
     expected_credits: int = Field(ge=0)
@@ -196,7 +247,7 @@ class ApproveRequest(BaseModel):
 
 class Job(BaseModel):
     id: str
-    state: Literal['uploaded', 'analyzing', 'quoting', 'awaiting_approval', 'generating',
+    state: Literal['uploaded', 'preparing', 'analyzing', 'quoting', 'awaiting_approval', 'generating',
                    'rendering', 'complete', 'error', 'interrupted', 'recommending',
                    'previewing', 'preview_ready', 'enhancing'] = 'uploaded'
     message: str = '사진을 준비했습니다.'
