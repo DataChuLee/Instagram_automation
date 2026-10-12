@@ -25,6 +25,33 @@ from .paths import DATA, RESOURCES, initialize, job_path
 from .pipeline import Pipeline
 
 TOKEN = secrets.token_urlsafe(32)
+EXPORTS = {'stay-reel.mp4': 'file', 'stay-video.mp4': 'video', 'stay-script.txt': 'script',
+           'stay-reel.srt': 'srt', 'stay-voice.mp3': 'audio'}  # Download name -> result/preview key.
+
+
+def style_file():
+    from . import paths  # Read at call time so the data folder can be redirected.
+    return paths.DATA / 'style.json'  # Last saved caption style and speed; new jobs start from it.
+
+
+def new_job(**values):
+    try:
+        saved = json.loads(style_file().read_text(encoding='utf-8'))
+        options = CreateOptions(caption=saved['caption'], speed=saved['speed'])
+    except (OSError, ValueError, KeyError, TypeError):
+        options = CreateOptions()
+    return Job(id=uuid.uuid4().hex, options=options, **values)
+
+
+def export_files(job):
+    """Newest file on disk per download: the last final export, or a later preview when there is one."""
+    folder, found = job_path(job.id), {}
+    for name, key in EXPORTS.items():
+        paths = [folder / name] + ([folder / job.preview[key]] if job.preview and job.preview.get(key) else [])
+        paths = [path for path in paths if path.is_file()]
+        if paths:
+            found[name] = max(paths, key=lambda path: path.stat().st_mtime).name
+    return found
 fish = Fish()
 drama = Drama(fish)
 pipeline = Pipeline(fish, drama)
@@ -186,7 +213,7 @@ async def jobs():
 
 @app.post('/api/jobs')
 async def upload(files: list[UploadFile] = File(...)):
-    return add_photos(Job(id=uuid.uuid4().hex, workflow_version=2), await read_uploads(files)).model_dump()
+    return add_photos(new_job(workflow_version=2), await read_uploads(files)).model_dump()
 
 
 async def read_uploads(files):
@@ -320,7 +347,7 @@ async def import_collection(value: dict):
     selected = value.get('photos')
     if not isinstance(selected, list) or not 1 <= len(selected) <= 60 or any(not isinstance(p, str) for p in selected):
         raise ValueError('가져올 사진을 1~60장 선택해 주세요.')
-    job = store.read(value['job_id']) if value.get('job_id') else Job(id=uuid.uuid4().hex)
+    job = store.read(value['job_id']) if value.get('job_id') else new_job()
     photos_editable(job)
     inputs = []
     total = 0
@@ -347,9 +374,7 @@ async def status(job_id: str):
     job = store.read(job_id)
     return job.model_dump() | {'preview_stale': bool(job.preview and job.preview.get('revision') != assets.render_revision(job)),
         'media_ready': assets.ready(job, job_path(job.id)), 'pending_media': assets.pending(job),
-        'available_exports': [name for name in
-        ('stay-reel.mp4', 'stay-video.mp4', 'stay-script.txt', 'stay-reel.srt', 'stay-voice.mp3')
-        if (job_path(job_id) / name).is_file()]}
+        'export_files': export_files(job)}
 
 
 @app.post('/api/jobs/{job_id}/analyze')
@@ -373,6 +398,8 @@ async def style(job_id: str, options: CreateOptions):
     job.options.caption = options.caption
     job.options.speed = options.speed
     store.save(job)
+    initialize()
+    style_file().write_text(json.dumps({'caption': options.caption.model_dump(), 'speed': options.speed}), encoding='utf-8')
     return job.model_dump()
 
 
@@ -487,7 +514,7 @@ def editable(job):
 
 @app.post('/api/composition')
 async def configure_composition(value: dict):
-    job = store.read(value['job_id']) if value.get('job_id') else Job(id=uuid.uuid4().hex, workflow_version=2)
+    job = store.read(value['job_id']) if value.get('job_id') else new_job(workflow_version=2)
     editable(job)
     mode = value.get('mode', 'manual')
     if mode not in {'manual', 'ai'}:

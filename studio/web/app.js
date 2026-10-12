@@ -182,16 +182,16 @@ function drawStatus(){
   const audioReady=job?.storyboard&&job.storyboard.scenes.every((s,i)=>job.narration[String(i)]?.file);
   $('rerender').hidden=!audioReady||busy||job.workflow_version>=2; $('resume').hidden=!job?.approval||busy||['complete','preview_ready'].includes(job.state);
   $('rerender').disabled=!numericValid();$('resume').disabled=dirtyScript||!numericValid();
-  $('exportNotice').textContent=busy?'작업이 진행 중이에요. 파일이 준비되면 다운로드할 수 있어요.':job?.result?'준비된 파일을 각각 다운로드하세요.':'영상 생성이 끝나면 아래 파일을 각각 다운로드할 수 있어요.';
-  if(job?.available_exports)exportCache.set(job.id,job.available_exports);
-  const available=new Set(job?(exportCache.get(job.id)||[]):[]);
+  if(job?.export_files)exportCache.set(job.id,job.export_files);
+  const files=job?(exportCache.get(job.id)||{}):{},saved=Object.keys(files).length>0;
+  $('exportNotice').textContent=busy?'작업이 진행 중이에요. 파일이 준비되면 다운로드할 수 있어요.':job?.result?'준비된 파일을 각각 다운로드하세요.':saved?'마지막으로 만든 파일이에요. 이후 고친 내용은 미리보기를 다시 만들어야 반영돼요.':'영상 생성이 끝나면 아래 파일을 각각 다운로드할 수 있어요.';
   for(const [id,name] of [['download','stay-reel.mp4'],['videoDownload','stay-video.mp4'],['scriptDownload','stay-script.txt'],['subtitleDownload','stay-reel.srt'],['audioDownload','stay-voice.mp3']]){
-    const ready=Boolean(job?.result&&available.has(name)&&!busy);
+    const ready=Boolean(files[name]&&!busy);
     $(id).hidden=!ready; $(id).removeAttribute('href');
-    if(ready){$(id).href=`/api/jobs/${job.id}/files/${name}`;$(id).download=name;}
+    if(ready){$(id).href=`/api/jobs/${job.id}/files/${files[name]}`;$(id).download=name;}
     if($(id+'Missing')){
       $(id+'Missing').hidden=ready;
-      $(id+'Missing').textContent=busy?'생성 중':!job?.result?'생성 후 다운로드':id==='scriptDownload'?'TXT는 다시 합성해 주세요':'다시 합성해 주세요';
+      $(id+'Missing').textContent=busy?'생성 중':!saved?'생성 후 다운로드':id==='scriptDownload'?'TXT는 다시 합성해 주세요':'다시 합성해 주세요';
     }
   }
   for(const button of document.querySelectorAll('.history-job'))button.disabled=sourceBusy;
