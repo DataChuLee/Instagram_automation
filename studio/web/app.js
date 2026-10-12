@@ -48,7 +48,7 @@ window.addEventListener('beforeunload',event=>{if(hasUnsavedEdits()){event.preve
 function numericValid(){return numericControls.every(id=>$(id+'Input').validity.valid);}
 function caption(){if(!numericValid())throw new Error('글자 크기와 X/Y 위치의 입력 범위를 확인해 주세요.');return {font_size:Number($('fontSize').value),x:Number($('posX').value),y:Number($('posY').value),color:$('color').value,outline:Number($('outline').value),background_opacity:Number($('bgOpacity').value)/100,shadow:Number($('shadow').value)};}
 function options(){return {max_motion:Number($('motion').value),caption:caption(),speed:Number($('speed').value)};}
-function loadStyle(){if(!job)return;const c=job.options.caption;for(const [id,key] of [['fontSize','font_size'],['posX','x'],['posY','y'],['color','color'],['outline','outline'],['shadow','shadow']])$(id).value=c[key];for(const id of numericControls){$(id+'Input').value=$(id).value;$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}$('bgOpacity').value=Math.round(c.background_opacity*100);$('speed').value=String(job.options.speed);motionOptions();updateOutputs();}
+function loadStyle(options=job?.options){if(!options)return;const c=options.caption;for(const [id,key] of [['fontSize','font_size'],['posX','x'],['posY','y'],['color','color'],['outline','outline'],['shadow','shadow']])$(id).value=c[key];for(const id of numericControls){$(id+'Input').value=$(id).value;$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}$('bgOpacity').value=Math.round(c.background_opacity*100);$('speed').value=String(options.speed);motionOptions();updateOutputs();}
 function motionOptions(){
   $('motion').value=String(Math.min(Number($('motion').defaultValue),job?.photos.length||0));
 }
@@ -218,16 +218,16 @@ function drawStatus(){
   const audioReady=job?.storyboard&&job.storyboard.scenes.every((s,i)=>job.narration[String(i)]?.file);
   $('rerender').hidden=!audioReady||busy||job.workflow_version>=2; $('resume').hidden=!job?.approval||busy||['complete','preview_ready'].includes(job.state);
   $('rerender').disabled=!numericValid();$('resume').disabled=dirtyScript||!numericValid();
-  $('exportNotice').textContent=busy?'작업이 진행 중이에요. 파일이 준비되면 다운로드할 수 있어요.':job?.result?'준비된 파일을 각각 다운로드하세요.':'영상 생성이 끝나면 아래 파일을 각각 다운로드할 수 있어요.';
-  if(job?.available_exports)exportCache.set(job.id,job.available_exports);
-  const available=new Set(job?(exportCache.get(job.id)||[]):[]);
+  if(job?.export_files)exportCache.set(job.id,job.export_files);
+  const files=job?(exportCache.get(job.id)||{}):{},saved=Object.keys(files).length>0;
+  $('exportNotice').textContent=busy?'작업이 진행 중이에요. 파일이 준비되면 다운로드할 수 있어요.':job?.result?'준비된 파일을 각각 다운로드하세요.':saved?'마지막으로 만든 파일이에요. 이후 고친 내용은 미리보기를 다시 만들어야 반영돼요.':'영상 생성이 끝나면 아래 파일을 각각 다운로드할 수 있어요.';
   for(const [id,name] of [['download','stay-reel.mp4'],['videoDownload','stay-video.mp4'],['scriptDownload','stay-script.txt'],['subtitleDownload','stay-reel.srt'],['audioDownload','stay-voice.mp3']]){
-    const ready=Boolean(job?.result&&available.has(name)&&!busy);
+    const ready=Boolean(files[name]&&!busy);
     $(id).hidden=!ready; $(id).removeAttribute('href');
-    if(ready){$(id).href=`/api/jobs/${job.id}/files/${name}`;$(id).download=name;}
+    if(ready){$(id).href=`/api/jobs/${job.id}/files/${files[name]}`;$(id).download=name;}
     if($(id+'Missing')){
       $(id+'Missing').hidden=ready;
-      $(id+'Missing').textContent=busy?'생성 중':!job?.result?'생성 후 다운로드':id==='scriptDownload'?'TXT는 다시 합성해 주세요':'다시 합성해 주세요';
+      $(id+'Missing').textContent=busy?'생성 중':!saved?'생성 후 다운로드':id==='scriptDownload'?'TXT는 다시 합성해 주세요':'다시 합성해 주세요';
     }
   }
   for(const button of document.querySelectorAll('.history-job'))button.disabled=sourceBusy;
@@ -335,6 +335,8 @@ $('newJob').onclick=()=>{
   for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','captionText'])$(id).value=$(id).defaultValue;
   $('speed').value='1';for(const id of numericControls){$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}
   $('files').value='';motionOptions();updateOutputs();drawPhotos();drawScript();drawStatus();
+  // Show the last saved caption style right away; the next upload starts from it.
+  api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});
 };
 $('enhance').onclick=action(()=>enhancePhotos());
 $('analyze').onclick=action(async()=>{if(job.storyboard&&!window.confirm('사진을 다시 분석하면 현재 대본과 움직임 구성이 새로 작성됩니다. 다시 분석할까요?'))return;await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/analyze`,options());job=await api('/api/jobs/'+job.id);});});
@@ -506,4 +508,4 @@ document.addEventListener('keydown',event=>{
   event.preventDefault();action(()=>stepPhoto(event.key==='ArrowLeft'?-1:1))();
 });
 new ResizeObserver(entries=>{document.documentElement.style.setProperty('--toolbar-offset',`${Math.ceil(entries[0].target.getBoundingClientRect().height)+24}px`);}).observe(document.querySelector('.workflow-toolbar'));
-drawStatus();restoreCollection();history().catch(showError);(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
+drawStatus();restoreCollection();history().catch(showError);api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
