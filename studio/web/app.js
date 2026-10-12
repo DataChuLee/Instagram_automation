@@ -48,8 +48,17 @@ let domainList=[],chosenDomain='stay',dirtyFacts=false,domainKey='';
 try{chosenDomain=localStorage.getItem('studioDomain')||'stay';}catch{}
 function domainInfo(id=job?.domain||chosenDomain){return domainList.find(d=>d.id===id)||domainList[0]||null;}
 function lines(element,text){element.replaceChildren();String(text||'').split('<br>').forEach((part,i)=>{if(i)element.append(document.createElement('br'));element.append(part);});}
+function drawTabs(){
+  const box=$('domainTabs');if(box.dataset.ids===domainList.map(d=>d.id).join())return;box.dataset.ids=domainList.map(d=>d.id).join();box.replaceChildren();
+  for(const item of domainList){const tab=document.createElement('button');tab.type='button';tab.setAttribute('role','radio');tab.dataset.domain=item.id;tab.textContent=item.label;
+    tab.onclick=()=>{if(job||sourceBusy)return;chosenDomain=item.id;try{localStorage.setItem('studioDomain',chosenDomain);}catch{}domainKey='';drawStatus();};box.append(tab);}
+}
+// 을/를: picks the object particle from the last syllable's final consonant (사진을, 메뉴를).
+function eul(word){const code=(word||'').charCodeAt(word.length-1)-0xac00;return word+(code>=0&&code<=11171&&code%28?'을':'를');}
+function words(){return domainInfo()?.ui||{noun:'사진',unit:'장',select:'선택한 사진',analyze:'사진 분석 & 대본 만들기 ↗',nav_hint:'←/→ 키로 사진 이동',heading:'사진 & 이야기'};}
 function drawDomain(){
-  const id=job?.domain||chosenDomain,info=domainInfo(id);
+  if(domainList.length&&!domainList.some(d=>d.id===chosenDomain))chosenDomain=domainList[0].id;
+  drawTabs();const id=job?.domain||chosenDomain,info=domainInfo(id);
   for(const tab of document.querySelectorAll('#domainTabs [data-domain]')){const on=tab.dataset.domain===id;tab.setAttribute('aria-checked',String(on));tab.disabled=sourceBusy||(Boolean(job)&&!on);tab.title=job&&!on?'영상 종류는 새 작업에서 바꿀 수 있어요':'';}
   if(!info)return;
   const key=`${info.id}|${job?.id||''}`;if(key===domainKey)return;domainKey=key;
@@ -62,15 +71,17 @@ function drawDomain(){
   $('uploadHint').textContent=ui.upload_hint||'드래그하거나 클릭해서 선택 · JPG, PNG, WebP';
   $('photoHint').textContent=video?'영상을 누르면 자막 가림(확대·위치)을 조절할 수 있어요':'모든 사진이 영상에 담깁니다 · 끌어서 순서 변경';
   document.querySelector('.composition-controls').hidden=video;$('motionEditor').hidden=video;$('modelPanel').hidden=video;
-  $('analyze').textContent=video?'영상 분석 & 대본 만들기 ↗':'사진 분석 & 대본 만들기 ↗';
+  $('analyze').textContent=ui.analyze;$('sourceHeading').textContent=ui.heading;$('photoPreview').textContent=ui.select;
+  $('stepPhotosLabel').textContent=`${ui.noun} 선택`;$('factsTitle').textContent=ui.facts_title||`${info.label} 정보`;$('factsHelp').textContent=ui.facts_help||'대본의 사실 근거로만 쓰여요. 가격·효능 같은 사실은 여기에 적은 것만 대본에 들어가요.';
   document.querySelector('input[name=compositionMode][value=ai]').closest('label').hidden=!info.features.ai_composition;
   $('captionText').defaultValue=ui.caption_default||'';if(!job?.storyboard)$('captionText').value=$('captionText').defaultValue;
   if(compositionMode()==='ai')$('compositionHelp').textContent=ui.ai_help||'';
   const fields=$('factsFields');fields.replaceChildren();$('factsPanel').hidden=!job||!info.facts.length;
   for(const fact of info.facts){const label=document.createElement('label');label.className='field';label.textContent=fact.label;const input=document.createElement(fact.key==='memo'?'textarea':'input');input.dataset.fact=fact.key;input.maxLength=300;input.value=job?.facts?.[fact.key]||'';input.oninput=()=>{dirtyFacts=true;drawStatus();};label.append(input);fields.append(label);}
+  if(!job)drawPhotos();  // Empty grid header follows the chosen kind (사진 0장 / 소스 영상 0개).
 }
 function factsValue(){const value={};for(const input of document.querySelectorAll('#factsFields [data-fact]'))value[input.dataset.fact]=input.value;return value;}
-for(const tab of document.querySelectorAll('#domainTabs [data-domain]'))tab.onclick=()=>{if(job||sourceBusy)return;chosenDomain=tab.dataset.domain;try{localStorage.setItem('studioDomain',chosenDomain);}catch{}domainKey='';drawStatus();};
+
 function confirmDiscard(){return !hasUnsavedEdits()||window.confirm('저장하지 않은 변경 사항이 있어요. 변경 사항을 버리고 이동할까요? 취소하면 계속 편집할 수 있어요.');}
 window.addEventListener('beforeunload',event=>{if(hasUnsavedEdits()){event.preventDefault();event.returnValue='';}});
 function numericValid(){return numericControls.every(id=>$(id+'Input').validity.valid);}
@@ -95,7 +106,7 @@ async function updatePreview(){
   $('preview').hidden=false;$('previewEmpty').hidden=true;$('video').hidden=true;drawPreviewStatus(Boolean(sourceBusy||busyStates.has(job.state)));
 }
 function drawPhotos(){
-  const grid=$('photoGrid');photoDrag=null;grid.classList.remove('reordering');grid.replaceChildren();$('photoCount').textContent=videoDomain()?`소스 영상 ${job?job.photos.length:0}개`:`사용 사진 ${job?job.photos.length:0}장`;if(!job)return;
+  const grid=$('photoGrid');photoDrag=null;grid.classList.remove('reordering');grid.replaceChildren();$('photoCount').textContent=`${videoDomain()?'소스':'사용'} ${words().noun} ${job?job.photos.length:0}${words().unit}`;if(!job)return;
   const order=job.photo_order?.length?job.photo_order:job.photos.map((_,i)=>i);
   order.forEach((index,position)=>{if(job.photos[index].kind==='video'){grid.append(videoCard(index,position));return;}const photo=job.photos[index],card=document.createElement('div');card.className='ordered-photo';card.onpointerdown=e=>grabPhoto(e,card,position);
     const button=document.createElement('button');button.title=photo.name;button.setAttribute('aria-label',`${position+1}번 사진 선택`);button.classList.toggle('selected',index===selectedPhoto);
@@ -224,8 +235,9 @@ function planValid(){return Boolean(job?.storyboard&&job.storyboard.scenes.every
 function planChanged(){dirtyScript=true;drawStatus();}
 function drawScript(){
   const panel=$('storyboard');panel.replaceChildren();
-  if(!job?.storyboard){const p=document.createElement('p');p.className='muted';p.textContent='사진을 분석하면 장면별 대본이 여기에 나타납니다.';panel.append(p);drawMotion();return;}
+  if(!job?.storyboard){const p=document.createElement('p');p.className='muted';p.textContent=`${eul(words().noun)} 분석하면 장면별 대본이 여기에 나타납니다.`;panel.append(p);drawMotion();return;}
   drawScriptOptions(panel);
+  const made=job.storyboard.provenance;if(made?.version){const note=document.createElement('p');note.className='muted provenance';note.textContent=`${domainInfo(made.domain)?.label||made.domain} 스키마 v${made.version} · ${made.overridden?'사용자 프롬프트':'기본 프롬프트'}로 작성`;panel.append(note);}
   job.storyboard.scenes.forEach((scene,index)=>{
     const row=document.createElement('div');row.className='scene';
     const number=document.createElement('span');number.className='scene-number';number.textContent=String(index+1).padStart(2,'0');
@@ -312,7 +324,7 @@ function drawStatus(){
   $('sourceNames').textContent=(job?.sources||[]).map(s=>s.name).join(' / ');
   $('status').className=job?.state==='error'?'error':busy?'busy':'';
   $('statusTitle').textContent=sourceBusy?'작업을 준비하고 있어요.':job?.message||'사진을 기다리고 있어요.';
-  $('statusDetail').textContent=job?.error||(hasUnsavedEdits()?'변경 사항이 아직 저장되지 않았어요. 상단에서 한 번에 저장하세요.':'사진 선택 → 대본·자막 편집 → 견적·영상 생성 → 확인·저장');drawPreviewStatus(busy);
+  $('statusDetail').textContent=job?.error||(hasUnsavedEdits()?'변경 사항이 아직 저장되지 않았어요. 상단에서 한 번에 저장하세요.':`${words().noun} 선택 → 대본·자막 편집 → 견적·영상 생성 → 확인·저장`);drawPreviewStatus(busy);
   $('quoteBox').hidden=job?.state!=='awaiting_approval'||!job?.quote||dirtyScript;
   $('approve').disabled=busy||dirtyScript||!numericValid();
   if(job?.quote){$('credits').textContent=job.quote.total.toLocaleString()+' credits';$('quoteBreakdown').textContent=`움직임 ${job.quote.videos.length}장(${job.video_model} · ${job.video_parameters.resolution}) · Drama3 음성 ${job.quote.voices.length}장면`;}drawModels();
@@ -354,13 +366,13 @@ async function loadJob(id){
 }
 async function upload(files){
   if(!files.length)return;
-  if(sourceBusy||photosLocked())throw new Error('현재 생성 작업이 끝난 뒤 사진을 추가해 주세요.');
+  if(sourceBusy||photosLocked())throw new Error(`현재 생성 작업이 끝난 뒤 ${eul(words().noun)} 추가해 주세요.`);
   const target=job?.id,form=new FormData();for(const file of files)form.append('files',file);if(!target)form.append('domain',chosenDomain);
   sourceBusy=true;drawStatus();
   try{if(hasUnsavedEdits())await persistEdits();job=await api(target?`/api/jobs/${target}/${videoDomain()?'videos':job.workflow_version>=2?'candidates':'photos'}`:'/api/jobs',form);previewMode='photo';selectedPhoto=job.photo_order?.[0]??0;loadStyle();drawPhotos();drawScript();await updatePreview();await history();}
   finally{sourceBusy=false;$('files').value='';drawStatus();}
 }
-async function history(){const list=await api('/api/jobs');$('history').replaceChildren();for(const item of list.slice(0,10)){const button=document.createElement('button');button.className='history-job';button.textContent=`[${domainList.find(d=>d.id===item.domain)?.label||'숙소'}] ${item.name?item.name+' · ':''}사진 ${item.photos}장 · ${item.message}`;button.disabled=sourceBusy;button.onclick=action(()=>selectJob(item.id));$('history').append(button);}}
+async function history(){const list=await api('/api/jobs');$('history').replaceChildren();for(const item of list.slice(0,10)){const button=document.createElement('button');button.className='history-job';const kind=domainList.find(d=>d.id===item.domain);button.textContent=`[${kind?.label||item.domain}] ${item.name?item.name+' · ':''}${kind?.ui.noun||'사진'} ${item.photos}${kind?.ui.unit||'장'} · ${item.message}`;button.disabled=sourceBusy;button.onclick=action(()=>selectJob(item.id));$('history').append(button);}}
 async function connections(){const value=await api('/api/connections');connectionState=value;$('codexState').textContent=value.codex?'ChatGPT 구독 연결됨':'로그인이 필요합니다';$('fishState').textContent=value.fish?'Fish MCP 연결됨 · 움직임·Drama3 음성':'패키지 크레딧 계정 연결 필요';$('loginMessage').textContent=value.codex_login;$('connectMessage').textContent=value.message;if(value.workspaces.length){const old=$('workspace').value;$('workspace').replaceChildren();for(const item of value.workspaces){const option=document.createElement('option');option.value=item.workspace_id;option.textContent=item.workspace_name;$('workspace').append(option);}if([...$('workspace').options].some(o=>o.value===old))$('workspace').value=old;}drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));return value;}
 function collectionControls(){
   const collecting=collection?.status==='in_progress',locked=sourceBusy||photosLocked();
@@ -441,7 +453,7 @@ $('newJob').onclick=()=>{
   api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});
 };
 $('enhance').onclick=action(()=>enhancePhotos());
-$('analyze').onclick=action(async()=>{if(job.storyboard&&!window.confirm('사진을 다시 분석하면 현재 대본과 움직임 구성이 새로 작성됩니다. 다시 분석할까요?'))return;await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/analyze`,options());job=await api('/api/jobs/'+job.id);});});
+$('analyze').onclick=action(async()=>{if(job.storyboard&&!window.confirm(`${eul(words().noun)} 다시 분석하면 현재 대본과 장면 구성이 새로 작성됩니다. 다시 분석할까요?`))return;await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/analyze`,options());job=await api('/api/jobs/'+job.id);});});
 $('quote').onclick=action(async()=>{const workspace=$('workspace').value;if(!planValid())throw new Error('움직임 프롬프트와 대본을 확인해 주세요.');if(!workspace){$('settingsButton').click();throw new Error('크레딧 견적을 확인하려면 계정을 연결하고 사용할 계정을 선택해 주세요.');}await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/quote`,{workspace});job=await api('/api/jobs/'+job.id);drawScript();});});
 $('approve').onclick=action(async()=>{if(dirtyScript||!job.quote)throw new Error('대본·움직임이 바뀌었습니다. 견적을 다시 확인해 주세요.');const approval={quote_id:job.quote.id,expected_credits:job.quote.total};await planTransaction(async()=>{await persistEdits();previewMode='video';await api(`/api/jobs/${job.id}/approve`,approval);job=await api('/api/jobs/'+job.id);drawScript();});});
 $('rerender').onclick=action(async()=>{await planTransaction(async()=>{await persistEdits();previewMode='video';await api(`/api/jobs/${job.id}/render`,{});job=await api('/api/jobs/'+job.id);});});
@@ -512,7 +524,7 @@ function drawPreviewStatus(busy){
   $('photoPreview').disabled=!job?.photos.length;
   $('videoPreview').setAttribute('aria-pressed',String(previewMode==='video'));
   $('videoPreview').disabled=!(job?.preview||job?.result);
-  $('previewNote').textContent=previewMode==='photo'?(job?.photos.length?'자막·크롭 편집 미리보기 · 추가 비용 없음 · ←/→ 키로 사진 이동':'사진을 선택하면 자막과 크롭을 바로 확인할 수 있어요.'):
+  $('previewNote').textContent=previewMode==='photo'?(job?.photos.length?`자막·크롭 편집 미리보기 · 추가 비용 없음 · ${words().nav_hint}`:`${eul(words().noun)} 선택하면 자막과 크롭을 바로 확인할 수 있어요.`):
     stale||dirtyScript||dirtyStyle?'변경 전 영상입니다. 변경 내용을 영상에 반영한 뒤 내보내세요.':job?.preview?`1080×1920 · 30fps · ${job.preview.duration.toFixed(1)}초 · 움직임·음성·자막 포함`:'저장된 완성 영상입니다. 사진을 선택하면 편집 미리보기로 전환됩니다.';
   $('paceWarning').textContent=(job?.preview?.warnings||[]).join(' ');
   $('recommend').disabled=busy||(!job?.candidates?.length&&!collectionSelected.size)||Boolean(job?.pending_media)||!$('targetCount').validity.valid;

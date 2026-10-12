@@ -152,7 +152,7 @@ class VideoAnalysisTests(unittest.TestCase):
             with patch('studio.codex.run_structured', fake), patch('studio.codex.job_path', return_value=folder):
                 plan = asyncio.run(codex.analyze_video(job))
             prompt = seen['prompt']
-            self.assertTrue(prompt.startswith('<ontology-schema domain="shopping">'))
+            self.assertTrue(prompt.startswith('<ontology-schema domain="shopping" version='))
             for phrase in SHOPPING_EXAMPLES + ('썰 공식', '상품 영상 편집', '이미지 1: 소스 0 · 0.5초', '"상품명": "얼룩 제거 스프레이"'):
                 self.assertIn(phrase, prompt)
             self.assertNotIn('숙소', prompt)

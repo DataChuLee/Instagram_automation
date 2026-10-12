@@ -91,7 +91,7 @@ async def choose(job, progress=lambda message: None):
         batch = pool[offset:offset+24]
         progress(f'후보 사진 {min(offset+24, len(pool))}/{len(pool)}장을 평가하고 있습니다.')
         signature = stable_hash({'ids': [p['id'] for p in batch], 'labels': [p.get('labels') for p in batch],
-                                 'runtime': identity, 'prompt': instructions, 'domain': job.domain,
+                                 'runtime': identity, 'prompt': instructions, 'domain': job.domain, 'version': domains.load(job.domain).version,
                                  'schema': stable_hash(Batch.model_json_schema())})
         cache = folder / f'cache-{signature}.json'
         if cache.is_file():

@@ -15,6 +15,7 @@ MIN_PHOTOS = 10
 TARGET_SECONDS = 25  # Average reel length; every photo shares it.
 CLIP_PHOTOS = 4  # Reference images per clip; four kept each shot faithful in the 2026-10-09 test.
 MIN_CLIP_SECONDS = 4  # Shortest clip Fish video models accept.
+MAX_CLIP_SECONDS = 15  # Longest clip a Motion may ask for (Motion.seconds).
 MIN_SEGMENT, MAX_SEGMENT = 0.5, 8.0  # Seconds of source video one shot may use.
 
 
@@ -23,6 +24,9 @@ def plan_clips(order: list[int], total=TARGET_SECONDS) -> list[dict]:
     if not order:
         return []
     count = -(-len(order) // CLIP_PHOTOS)
+    # Few-photo domains: add clips until the longest fits what a model accepts.
+    while count < len(order) and -(-len(order) // count) * total / len(order) > MAX_CLIP_SECONDS:
+        count += 1
     sizes = [len(order) // count + (index < len(order) % count) for index in range(count)]
     raw = [size * total / len(order) for size in sizes]
     seconds = [int(value) for value in raw]
@@ -74,7 +78,7 @@ class Motion(BaseModel):
     photo: int = Field(ge=0)
     prompt: str = Field(min_length=1, max_length=2000)
     photos: list[int] = Field(default_factory=list, max_length=9)
-    seconds: int = Field(4, ge=4, le=15)
+    seconds: int = Field(4, ge=MIN_CLIP_SECONDS, le=MAX_CLIP_SECONDS)
 
     @field_validator('prompt', mode='before')
     @classmethod
@@ -127,6 +131,7 @@ class Storyboard(BaseModel):
     scenes: list[Scene] = Field(min_length=1)
     script_options: list[ScriptOption] = Field(default_factory=list, max_length=5)
     segments: list[Segment] = Field(default_factory=list)  # Video domains only; empty for photo storyboards.
+    provenance: dict = Field(default_factory=dict)  # {domain, version, skill_hash, overridden} of the analysis that wrote it.
     script_choice: int = Field(0, ge=0)
     motion: list[Motion] = Field(default_factory=list)
     crop_focus: list[CropFocus] = Field(default_factory=list)
@@ -195,7 +200,7 @@ class Job(BaseModel):
                    'rendering', 'complete', 'error', 'interrupted', 'recommending',
                    'previewing', 'preview_ready', 'enhancing'] = 'uploaded'
     message: str = '사진을 준비했습니다.'
-    photos: list[dict] = Field(default_factory=list)
+    photos: list[dict] = Field(default_factory=list)  # Media items: photos, or source videos (kind='video').
     sources: list[dict] = Field(default_factory=list)
     options: CreateOptions = Field(default_factory=CreateOptions)
     storyboard: Storyboard | None = None
@@ -218,7 +223,7 @@ class Job(BaseModel):
     video_model: str = VIDEO_MODEL
     video_parameters: dict = Field(default_factory=lambda: dict(MOTION_PARAMETERS))
     model_probe: dict | None = None  # Uploaded sample image reused for free per-model estimates.
-    domain: Literal['stay', 'shopping'] = 'stay'  # Fixed at creation; picks the schema, prompts and UI wording.
+    domain: str = 'stay'  # Fixed at creation (validated by app.new_job); picks the schema, prompts and UI wording.
     facts: dict[str, str] = Field(default_factory=dict)  # User-entered schema properties, e.g. product name.
 
     def video_choice(self):

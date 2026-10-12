@@ -55,7 +55,7 @@ class DomainSchemaTests(unittest.TestCase):
         self.assertIn('Accommodation', domains.schema_block(stay))
         self.assertIn('간판', enhance.prompt())
         block = domains.schema_block(shopping)
-        self.assertTrue(block.startswith('<ontology-schema domain="shopping">') and block.endswith('</ontology-schema>'))
+        self.assertTrue(block.startswith('<ontology-schema domain="shopping" version=') and block.endswith('</ontology-schema>'))
         for name in ('Product', 'Feature', 'UseScene', 'SourceVideo', 'Segment', 'name(상품명, 사용자 입력)'):
             self.assertIn(name, block)
         self.assertTrue(stay.features.link_collection)
@@ -71,7 +71,7 @@ class DomainSchemaTests(unittest.TestCase):
 
     def test_stay_prompt_keeps_every_skill_line_and_only_adds_the_schema(self):
         prompt = analysis_prompt(job())
-        self.assertTrue(prompt.startswith('<ontology-schema domain="stay">'))
+        self.assertTrue(prompt.startswith('<ontology-schema domain="stay" version='))
         for name in codex.SKILL_FILES:
             self.assertIn(domains.load('stay').skill(name), prompt)
         self.assertIn('서로 다른 객실 종류는 다른 장면으로 구분한다', prompt)

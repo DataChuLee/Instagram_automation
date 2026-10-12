@@ -9,7 +9,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from . import domains
-from .models import (MAX_SEGMENT, MIN_PHOTOS, MIN_SEGMENT, TARGET_SECONDS, CropBox, Scene, ScriptOption, Segment,
+from .models import (MAX_SEGMENT, MIN_SEGMENT, TARGET_SECONDS, CropBox, Scene, ScriptOption, Segment,
                      Storyboard, plan_clips)
 from .paths import DATA, RESOURCES, initialize, job_path
 
@@ -170,6 +170,8 @@ motion, crop_focus, motion_recommendations는 빈 배열, selection_reasons는 �
                 segment['end'] = round(segment['start'] + MAX_SEGMENT, 2)
     result.update(motion=[], crop_focus=[], motion_recommendations=[], selection_reasons={})
     plan = Storyboard.validate_video_plan(result, job.photos)
+    plan.provenance = domains.record(domain, [domains.schema_block(domain), skill_text(job.domain, 'SKILL_TEXT.md'),
+                                              skill_text(job.domain, 'SKILL_EDIT.md')], ['SKILL_TEXT.md', 'SKILL_EDIT.md'])
     for index, source in sources:
         if source.get('crop', {}).get('user') or index not in crops:
             continue
@@ -184,11 +186,11 @@ motion, crop_focus, motion_recommendations는 빈 배열, selection_reasons는 �
 async def analyze(job):
     folder = job_path(job.id)
     order = job.photo_order or list(range(len(job.photos)))
-    if len(order) < MIN_PHOTOS:
-        raise ValueError(f'사진은 최소 {MIN_PHOTOS}장 이상 넣어 주세요. 현재 {len(order)}장입니다.')
+    domain = domains.load(job.domain)
+    if len(order) < domain.min_media:
+        raise ValueError(f'사진은 최소 {domain.min_media}장 이상 넣어 주세요. 현재 {len(order)}장입니다.')
     clips = plan_clips(order)
     shot = TARGET_SECONDS / len(order)
-    domain = domains.load(job.domain)
     prompt = f'''{domains.schema_block(domain)}
 {skill(job.domain)}
 첨부 사진은 0부터 {len(job.photos)-1}까지 원본 사진 번호입니다.
@@ -218,6 +220,7 @@ selection_reasons는 빈 객체로 반환하세요.
         raise ValueError('클립별 움직임 프롬프트가 누락되었습니다. 다시 분석해 주세요.')
     result['motion'] = [dict(clip, photo=clip['photos'][0], prompt=prompts[clip['photos'][0]]) for clip in clips]
     plan = Storyboard.validate_plan(result, len(job.photos), len(clips), order)
+    plan.provenance = domains.record(domain, [domains.schema_block(domain), skill(job.domain)], list(SKILL_FILES))
     if sorted(r.photo for r in plan.motion_recommendations) != list(range(len(job.photos))):
         raise ValueError('사진별 움직임 추천이 누락되었습니다. 다시 분석해 주세요.')
     if sorted(f.photo for f in plan.crop_focus) != list(range(len(job.photos))):

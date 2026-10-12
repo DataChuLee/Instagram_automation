@@ -82,6 +82,9 @@ def error_description(error):
 @asynccontextmanager
 async def lifespan(app):
     initialize()
+    from . import paths
+    (paths.DATA / 'domains').mkdir(parents=True, exist_ok=True)  # Where new or overriding short-form kinds go.
+    domains.reload()  # Logs any domain folder that cannot be used; the others still load.
     store.recover()
     collector.recover()
     spawn(restore_fish())
@@ -226,12 +229,17 @@ async def list_domains():
     return [domains.public(domain) for domain in domains.all()]
 
 
+@app.get('/api/domains/problems')
+async def domain_problems():
+    return domains.problems()
+
+
 @app.post('/api/jobs')
 async def upload(files: list[UploadFile] = File(...), domain: str = Form('stay')):
     job = new_job(domain, workflow_version=2)
     if domains.load(domain).media == 'video':
         return (await add_videos(job, files)).model_dump()
-    return add_photos(job, await read_uploads(files)).model_dump()
+    return add_photos(job, await read_uploads(files, domains.load(domain).max_media)).model_dump()
 
 
 VIDEO_TYPES = {'.mp4', '.mov', '.m4v', '.webm'}
@@ -333,9 +341,9 @@ async def save_facts(job_id: str, value: dict):
     return job.model_dump()
 
 
-async def read_uploads(files):
-    if not 1 <= len(files) <= 60:
-        raise ValueError('사진은 1~60장까지 넣어 주세요.')
+async def read_uploads(files, limit=60):
+    if not 1 <= len(files) <= limit:
+        raise ValueError(f'사진은 1~{limit}장까지 넣어 주세요.')
     inputs = []
     total = 0
     for file in files:
@@ -369,8 +377,9 @@ def add_photos(job, inputs, source_metadata=None):
             total += len(data)
             if len(data) > 20 * 1024 * 1024 or total > 300 * 1024 * 1024:
                 raise ValueError('사진 용량이 너무 큽니다. 사진당 20MB, 전체 300MB 이내로 넣어 주세요.')
-            if len(job.photos) + len(added) >= 60:
-                raise ValueError('첨부 사진과 링크 사진을 합쳐 최대 60장까지 넣을 수 있습니다.')
+            limit = domains.load(job.domain).max_media
+            if len(job.photos) + len(added) >= limit:
+                raise ValueError(f'첨부 사진과 링크 사진을 합쳐 최대 {limit}장까지 넣을 수 있습니다.')
             name = f'photo-{len(job.photos) + len(added):03}.jpg'
             try:
                 with Image.open(io.BytesIO(data)) as original:
@@ -495,6 +504,7 @@ async def saved_style():
 @app.get('/api/jobs/{job_id}')
 async def status(job_id: str):
     job = store.read(job_id)
+    domains.load(job.domain)  # A job whose kind was removed cannot be edited; say so instead of failing later.
     return job.model_dump() | {'preview_stale': bool(job.preview and job.preview.get('revision') != assets.render_revision(job)),
         'media_ready': assets.ready(job, job_path(job.id)), 'pending_media': assets.pending(job),
         'export_files': export_files(job)}

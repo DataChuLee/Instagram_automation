@@ -1,21 +1,90 @@
 {
   "id": "stay",
   "label": "숙소",
+  "version": "1",
+  "order": 10,
   "object_types": [
-    {"name": "Accommodation", "label": "숙소", "description": "영상의 주인공인 숙소 한 곳",
-     "properties": [{"name": "name", "label": "숙소 이름"}, {"name": "exterior", "label": "외관·전경"}, {"name": "atmosphere", "label": "낮/밤 분위기"}],
-     "links": [{"name": "rooms", "target": "Room"}, {"name": "facilities", "target": "Facility"}]},
-    {"name": "Room", "label": "객실", "description": "객실 종류. 서로 다른 객실은 다른 객체다",
-     "properties": [{"name": "room_name", "label": "객실명(라벨에 있을 때만)"}, {"name": "view", "label": "보이는 풍경"}, {"name": "interior", "label": "가구·인테리어"}],
-     "links": [{"name": "accommodation", "target": "Accommodation"}]},
-    {"name": "Facility", "label": "시설", "description": "수영장·스파·식당 같은 부대시설",
-     "properties": [{"name": "kind", "label": "시설 종류"}, {"name": "highlight", "label": "사진에 보이는 매력"}],
-     "links": [{"name": "accommodation", "target": "Accommodation"}]},
-    {"name": "Photo", "label": "사진", "description": "영상에 쓰는 사진 한 장",
-     "properties": [{"name": "labels", "label": "출처 라벨"}],
-     "links": [{"name": "shows", "target": "Accommodation | Room | Facility"}]}
+    {
+      "name": "Accommodation",
+      "label": "숙소",
+      "description": "영상의 주인공인 숙소 한 곳",
+      "properties": [
+        {
+          "name": "name",
+          "label": "숙소 이름"
+        },
+        {
+          "name": "exterior",
+          "label": "외관·전경"
+        },
+        {
+          "name": "atmosphere",
+          "label": "낮/밤 분위기"
+        }
+      ],
+      "links": [
+        {
+          "name": "rooms",
+          "target": "Room"
+        },
+        {
+          "name": "facilities",
+          "target": "Facility"
+        }
+      ]
+    },
+    {
+      "name": "Room",
+      "label": "객실",
+      "description": "객실 종류. 서로 다른 객실은 다른 객체다",
+      "properties": [
+        {
+          "name": "room_name",
+          "label": "객실명(라벨에 있을 때만)"
+        },
+        {
+          "name": "view",
+          "label": "보이는 풍경"
+        },
+        {
+          "name": "interior",
+          "label": "가구·인테리어"
+        }
+      ],
+      "links": [
+        {
+          "name": "accommodation",
+          "target": "Accommodation"
+        }
+      ]
+    },
+    {
+      "name": "Facility",
+      "label": "시설",
+      "description": "수영장·스파·식당 같은 부대시설",
+      "properties": [
+        {
+          "name": "kind",
+          "label": "시설 종류"
+        },
+        {
+          "name": "highlight",
+          "label": "사진에 보이는 매력"
+        }
+      ],
+      "links": [
+        {
+          "name": "accommodation",
+          "target": "Accommodation"
+        }
+      ]
+    }
   ],
-  "features": {"link_collection": true, "enhance": true, "ai_composition": true},
+  "features": {
+    "link_collection": true,
+    "enhance": true,
+    "ai_composition": true
+  },
   "ui": {
     "intro": "숙소 사진을 넣고, 나만의 자막을 더하세요.",
     "upload_title": "숙소 사진을 여기에 넣어 주세요",
@@ -26,5 +95,12 @@
     "recommend_progress": "전체 후보 사진을 평가하고 숙소 소개 구성을 추천합니다.",
     "enhance_label": "고화질 변환 · 인물 제거 ↗",
     "photo_name": "숙소 사진"
-  }
+  },
+  "links_from_system": [
+    {
+      "type": "Photo",
+      "name": "shows",
+      "target": "Accommodation | Room | Facility"
+    }
+  ]
 }
