@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import assets, codex, collector, composition, enhance, recommendation, store, video_models
+from . import assets, codex, collector, composition, enhance, performance, recommendation, store, video_models
 from .drama import Drama
 from .fish import Fish
 from .media import crop_photo, preview_image
@@ -361,6 +361,12 @@ async def analyze(job_id: str, options: CreateOptions):
     store.save(job)
     pipeline.launch(job_id, pipeline.analyze)
     return {'ok': True}
+
+
+@app.get('/api/jobs/{job_id}/performance')
+async def performance_report(job_id: str):
+    store.read(job_id)
+    return await asyncio.to_thread(performance.report, job_path(job_id))
 
 
 @app.post('/api/jobs/{job_id}/style')

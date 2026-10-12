@@ -57,6 +57,22 @@ class AppTests(unittest.TestCase):
             files=[('files',('p.jpg',b'not an image','image/jpeg'))])
         self.assertEqual(response.status_code,400)
 
+    def test_performance_endpoint_handles_old_jobs_and_returns_recorded_runs(self):
+        from studio import performance
+        job = self.upload()
+        url = f'/api/jobs/{job["id"]}/performance'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['runs'], [])
+        with performance.run(self.folder / job['id'], 'generate'):
+            with performance.span('motion.submit'):
+                pass
+        response = self.client.get(url)
+        run = response.json()['runs'][0]
+        self.assertEqual(run['operation'], 'generate')
+        self.assertEqual(run['status'], 'ok')
+        self.assertEqual(self.client.get('/api/jobs/' + 'f'*32 + '/performance').status_code, 404)
+
     def test_photo_preview_keeps_the_tail_of_long_screen_captions(self):
         job = self.upload()
         prefix = '가' * 160

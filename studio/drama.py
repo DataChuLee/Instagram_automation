@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 
 from .models import DRAMA_MODEL, VOICE_ID
+from . import performance
 
 
 class Drama:
@@ -94,14 +95,14 @@ class Drama:
     async def collect(self, request, path, saved):
         # Poll read-only verbs; an uncertain paid submission is never repeated.
         for attempt in range(120):
-            block = await self.read(request)
+            block = await performance.wait('voice.status', self.read(request))
             url = block.get('audio_url')
             if url and not block.get('dirty', True):
                 await saved({**request, 'state': 'completed', 'url': url})
-                await self.fish.download(url, path)
+                await performance.wait('voice.download', self.fish.download(url, path))
                 return
             if attempt < 119:
-                await asyncio.sleep(3)
+                await performance.wait('voice.poll_wait', asyncio.sleep(3))
         raise RuntimeError('Drama3 결과 대기 시간이 초과되었습니다. 이어서 진행하면 같은 MCP 블록을 조회합니다. 자동 재생성하지 않습니다.')
 
     async def recover(self, request, path, saved):
@@ -121,6 +122,6 @@ class Drama:
                 if value.get('estimated_credits') != expected_credits:
                     raise RuntimeError('Drama3 크레딧 견적이 바뀌었습니다. 다시 승인해 주세요.')
                 await saved({**request, 'state': 'submitted'})
-                await self.fish.call('studio_generate', {
-                    'project_id': request['project_id'], 'blocks': [request['block']], 'only_dirty': True})
+                await performance.wait('voice.submit', self.fish.call('studio_generate', {
+                    'project_id': request['project_id'], 'blocks': [request['block']], 'only_dirty': True}))
             await self.collect(request, path, saved)

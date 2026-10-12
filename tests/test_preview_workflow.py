@@ -112,6 +112,13 @@ class PreviewWorkflowTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(saved.generated['0']['file'])
             self.assertTrue(saved.narration['0']['file'])
             pipeline.preview.assert_awaited_once_with(job.id)
+            from studio import performance
+            summary = performance.report(folder)
+            self.assertEqual(len(summary['runs']), 1)
+            measurement = summary['runs'][0]
+            self.assertEqual(measurement['operation'], 'generate')
+            stages = {entry['stage'] for entry in measurement['stages']}
+            self.assertTrue({'motion.total', 'voice.total', 'motion.download', 'voice.generate'} <= stages)
 
     async def test_generation_stops_at_preview_and_does_not_export(self):
         with tempfile.TemporaryDirectory() as directory:

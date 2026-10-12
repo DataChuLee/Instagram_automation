@@ -11,6 +11,7 @@ from pathlib import Path
 from .media import allocate_frames, caption_image, caption_segments, crop_photo, cut_zoom, srt_time
 from .assets import render_revision
 from .models import MIN_MOTION_SIDE
+from . import performance
 from .paths import RESOURCES, job_path
 
 # Drop leading silence and shrink every pause (mid-sentence and trailing) to 0.05s so speech runs back to back.
@@ -34,12 +35,27 @@ def ffmpeg():
 
 
 def run(*args):
-    process = subprocess.run([ffmpeg(), '-hide_banner', '-loglevel', 'error', '-y', *map(str, args)],
-        capture_output=True, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    if process.returncode:
-        raise RuntimeError(process.stderr.decode('utf-8', 'replace')[-2000:])
+    output = Path(str(args[-1])).name
+    if '-filter_complex' in args:
+        stage = 'render.clip_encode'
+    elif 'null' in args:
+        stage = 'render.decode_verify'
+    elif output.startswith('audio-'):
+        stage = 'render.audio_process'
+    elif output.startswith('padded-'):
+        stage = 'render.audio_pad'
+    elif output == 'preview.jpg':
+        stage = 'render.poster'
+    else:
+        stage = 'render.package'
+    with performance.span(stage, output=output):
+        process = subprocess.run([ffmpeg(), '-hide_banner', '-loglevel', 'error', '-y', *map(str, args)],
+            capture_output=True, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        if process.returncode:
+            raise RuntimeError(process.stderr.decode('utf-8', 'replace')[-2000:])
 
 
+@performance.measured('render.probe')
 def video_size(path):
     process = subprocess.run([ffmpeg(), '-hide_banner', '-i', str(path)], capture_output=True,
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
@@ -50,6 +66,7 @@ def video_size(path):
     return tuple(map(int, match.groups()))
 
 
+@performance.measured('render.shot_detection')
 def shot_bounds(path, shots):
     """(start, end) seconds of each hard-cut shot in a clip, placing cuts at the strongest scene changes."""
     process = subprocess.run([ffmpeg(), '-hide_banner', '-i', str(path), '-an', '-vf',
@@ -90,10 +107,11 @@ def verify(path, decode=True):
         run('-i', path, '-f', 'null', '-')
 
 
-def render(job, progress=lambda message: None, preview=False):
+@performance.measured('render.total')
+def render(job, progress=lambda message: None, preview=False, folder=None):
     if not job.storyboard:
         raise ValueError('대본이 없습니다.')
-    folder = job_path(job.id)
+    folder = folder if folder is not None else job_path(job.id)
     for motion in job.storyboard.motion:
         asset = job.generated.get(str(motion.photo), {}).get('file')
         if not asset or not (folder / asset).is_file():
