@@ -68,12 +68,24 @@ def wrap_caption(text: str, font, width=940, outline=8) -> str:
 def caption_image(text: str, style: CaptionStyle | None = None) -> Image.Image:
     style = style or CaptionStyle()
     font = ImageFont.truetype(str(font_path()), style.font_size)
+    if len(text.strip().splitlines()) == 2:
+        # Keep explicit two-line copy intact even with a large saved font size.
+        measure = ImageDraw.Draw(Image.new('RGB', (1, 1)))
+        size = style.font_size
+        while size > 20 and max(measure.textlength(line, font=font) for line in text.splitlines()) + 2 * style.outline > 940:
+            size -= 1
+            font = ImageFont.truetype(str(font_path()), size)
     text = wrap_caption(text, font, outline=style.outline)
     layer = Image.new('RGBA', SIZE)
     draw = ImageDraw.Draw(layer)
     center = style.center(*SIZE)
-    kwargs = dict(font=font, anchor='mm', align='center', spacing=round(style.font_size * 0.12),
+    kwargs = dict(font=font, anchor='mm', align=style.align, spacing=round(font.size * 0.12),
                   stroke_width=style.outline)
+    bounds = draw.multiline_textbbox(center, text, **kwargs)
+    # Keep a moved or left-aligned block inside the portrait's safe margins.
+    dx = max(70 - bounds[0], 0) - max(bounds[2] - (SIZE[0] - 70), 0)
+    dy = max(70 - bounds[1], 0) - max(bounds[3] - (SIZE[1] - 70), 0)
+    center = (center[0] + dx, center[1] + dy)
     bounds = draw.multiline_textbbox(center, text, **kwargs)
     if style.background_opacity:
         draw.rectangle(bounds, fill=(0, 0, 0, round(255 * style.background_opacity)))
