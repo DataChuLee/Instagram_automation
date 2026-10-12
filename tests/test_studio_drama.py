@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -7,6 +8,37 @@ from studio.models import DRAMA_MODEL, VOICE_ID
 
 
 class DramaMCPTests(unittest.IsolatedAsyncioTestCase):
+    async def test_waiting_for_audio_does_not_block_another_submission(self):
+        submitted = set()
+        both = asyncio.Event()
+        async def call(name, args):
+            if name == 'studio_project':
+                return {'default_backend': DRAMA_MODEL, 'roster': []}
+            if name == 'studio_read_blocks':
+                project = args['project_id']
+                if project in submitted:
+                    await asyncio.wait_for(both.wait(), 2)
+                return {'blocks': [{'rev': 'rev', 'text': '숙소', 'voice': VOICE_ID,
+                                    'dirty': project not in submitted,
+                                    'audio_url': 'https://example.com/' + project}]}
+            if name == 'studio_generate':
+                if args.get('dry_run'):
+                    return {'estimated_credits': 6}
+                submitted.add(args['project_id'])
+                if len(submitted) == 2:
+                    both.set()
+            return {}
+        self.fish.call.side_effect = call
+        saved = [{}, {}]
+        async def one(index):
+            async def persist(data):
+                saved[index].update(data)
+            await self.drama.generate('숙소', 6, Path(f'{index}.mp3'), persist,
+                                      dict(self.record, project_id=str(index)))
+        await asyncio.gather(one(0), one(1))
+        self.assertEqual(submitted, {'0', '1'})
+        self.assertEqual([r['state'] for r in saved], ['completed', 'completed'])
+
     def setUp(self):
         self.fish = AsyncMock()
         self.drama = Drama(self.fish)
