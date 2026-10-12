@@ -12,6 +12,19 @@ from .paths import job_path
 from .render import publish_preview, render, video_size
 
 
+async def parallel(items, action, limit):
+    """Bound in-flight work and settle every submitted request before surfacing errors."""
+    gate = asyncio.Semaphore(limit)
+    async def one(item):
+        async with gate:
+            return await action(item)
+    outcomes = await asyncio.gather(*(one(item) for item in items), return_exceptions=True)
+    for outcome in outcomes:
+        if isinstance(outcome, BaseException):
+            raise outcome
+    return outcomes
+
+
 def capability(motion):
     return 'i2v_ref' if len(motion.photos) > 1 else 'i2v'
 
@@ -51,7 +64,7 @@ class Pipeline:
         store.save(job)
 
     @performance.operation
-    async def enhance(self, job_id, indices=None):
+    async def enhance(self, job_id, indices=None, preparing=False):
         """Remakes photos with Codex before analysis; each finished photo is saved as it lands."""
         job = store.read(job_id)
         if job.storyboard or job.generated or job.narration or job.result:
@@ -61,7 +74,9 @@ class Pipeline:
         total, counts = len(indices), {'done': 0, 'failed': 0}
         for index in indices:
             job.photos[index]['enhancing'] = True
-        self.update(job, 'enhancing', f'고화질 변환 중 · 0/{total}장')
+        state = 'preparing' if preparing else 'enhancing'
+        prefix = '고화질 변환·대본 동시 작업' if preparing else '고화질 변환 중'
+        self.update(job, state, f'{prefix} · 0/{total}장')
         folder = job_path(job_id)
         gate = asyncio.Semaphore(enhance.CONCURRENCY)
         domain = job.domain
@@ -82,7 +97,7 @@ class Pipeline:
                 job = store.read(job_id)
                 enhance.record(job, index, **outcome)
                 counts['done' if 'file' in outcome else 'failed'] += 1
-                job.message = f'고화질 변환 중 · {counts["done"] + counts["failed"]}/{total}장'
+                job.message = f'{prefix} · {counts["done"] + counts["failed"]}/{total}장'
                 store.save(job)
 
         tasks = [asyncio.create_task(one(index)) for index in indices]
@@ -96,8 +111,45 @@ class Pipeline:
             enhance.settle(job)
             store.save(job)
             raise
-        self.update(store.read(job_id), 'uploaded',
-                    f'고화질 변환 완료 · 성공 {counts["done"]}장 · 실패 {counts["failed"]}장')
+        self.update(store.read(job_id), state if preparing else 'uploaded',
+                    f'고화질 변환 완료 · 성공 {counts["done"]}장 · 실패 {counts["failed"]}장'
+                    + (' · 대본 분석 완료 대기 중' if preparing else ''))
+
+    @performance.operation
+    async def prepare(self, job_id):
+        """Analyze a stable photo snapshot while enhancements are saved independently."""
+        job = store.read(job_id)
+        domain = domains.load(job.domain)
+        if domain.media != 'photo' or len(job.photos) < domain.min_media:
+            raise ValueError(f'사진을 {domain.min_media}장 이상 준비해 주세요.')
+        if job.domain == 'stay-silent' and len(job.photos) > 10:
+            raise ValueError('음성X는 사용할 사진 8~10장을 먼저 골라 주세요.')
+        assets.prepare_allowed(job)
+        assets.capture(job)
+        assets.checkpoint(job)
+        job.storyboard = None
+        job.generated, job.narration = {}, {}
+        assets.invalidate(job)
+        self.update(job, 'preparing', '고화질 변환과 대본 분석을 함께 시작합니다.')
+        outcomes = await asyncio.gather(
+            self.enhance(job_id, preparing=True),
+            performance.wait('script.analyze', codex.analyze(job, removing_people=True)),
+            return_exceptions=True)
+        for outcome in outcomes:
+            if isinstance(outcome, BaseException):
+                raise outcome
+        # Never save the analysis snapshot: it predates every completed enhancement.
+        job = store.read(job_id)
+        job.storyboard = outcomes[1]
+        for focus in job.storyboard.crop_focus:
+            photo = job.photos[focus.photo]
+            if (photo.get('enhanced') or {}).get('active'):
+                # Enhanced output is already 1080x1920; original-image coordinates don't apply.
+                focus.x = focus.y = .5
+        assets.invalidate(job)
+        failed = sum((p.get('enhanced') or {}).get('state') == 'failed' for p in job.photos)
+        self.update(job, 'uploaded', '고화질 사진과 대본을 준비했습니다.'
+                    + (f' 변환 실패 {failed}장은 원본을 사용합니다.' if failed else ''))
 
     @performance.operation
     async def analyze(self, job_id):
@@ -137,7 +189,11 @@ class Pipeline:
         job = store.read(job_id)
         if not job.storyboard:
             raise ValueError('사진 분석을 먼저 실행해 주세요.')
-        self.update(job, 'quoting', '움직임과 Drama3 음성의 실제 크레딧 견적을 확인하고 있습니다.')
+        if job.domain == 'stay-silent':
+            job.storyboard.validate_silent(len(job.photos))
+        narrated = domains.load(job.domain).features.narration
+        self.update(job, 'quoting', '움직임과 Drama3 음성의 실제 크레딧 견적을 확인하고 있습니다.' if narrated
+                    else '움직임의 실제 크레딧 견적을 확인하고 있습니다. 음성 비용은 없습니다.')
         job.approval = None
         store.save(job)
         if job.workflow_version >= 2:
@@ -189,7 +245,7 @@ class Pipeline:
                 raise RuntimeError('Fish 움직임 생성에 필요한 크레딧이 부족합니다.')
             videos.append({'photo': motion.photo, 'request': request, 'credits': value['credits'],
                            'pricing_version': value['pricing_version'], 'balance': value.get('balance')})
-        for scene_index, scene in enumerate(job.storyboard.scenes):
+        for scene_index, scene in enumerate(job.storyboard.scenes if narrated else []):
             saved = job.narration.get(str(scene_index), {})
             if saved.get('file') and (folder / saved['file']).exists():
                 continue
@@ -222,7 +278,9 @@ class Pipeline:
     async def generate(self, job_id):
         job = store.read(job_id)
         store.generation_allowed(job)
-        self.update(job, 'generating', '승인한 크레딧으로 움직임과 Drama3 음성을 만들고 있습니다.')
+        narrated = domains.load(job.domain).features.narration
+        self.update(job, 'generating', '승인한 크레딧으로 움직임과 Drama3 음성을 만들고 있습니다.' if narrated
+                    else '승인한 크레딧으로 움직임을 만들고 있습니다. 음성 없이 자막으로 합성합니다.')
         folder = job_path(job.id)
         for item in job.quote['videos']:
             key = str(item['photo'])
@@ -241,76 +299,101 @@ class Pipeline:
             saved.update(generation_id=generation_id, state='submitted')
             store.save(job)
         # Videos render on Fish servers for minutes, so voices are made meanwhile instead of after.
-        async def videos():
-            for motion in job.storyboard.motion:
-                key = str(motion.photo)
-                saved = job.generated[key]
-                if saved.get('file') and (folder / saved['file']).exists():
-                    continue
-                generation_id = saved.get('generation_id')
-                if not generation_id:
-                    raise RuntimeError('움직임 생성 ID가 없습니다. 견적 단계로 돌아가 주세요.')
-                for _ in range(120):
-                    value = await performance.wait('motion.status', self.fish.call('get_generation_status', {'generation_id': generation_id}), photo=motion.photo)
-                    status = value.get('status')
-                    if status in {'failed', 'cancelled'}:
-                        saved['state'] = status
-                        assets.capture(job)
-                        store.save(job)
-                        raise RuntimeError('Fish 움직임 생성이 실패했습니다. 저장된 ID: ' + generation_id)
-                    if status in {'completed', 'succeeded', 'finished'}:
-                        result = await performance.wait('motion.result', self.fish.call('get_generation_result', {'generation_id': generation_id}), photo=motion.photo)
-                        results = result.get('results', [])
-                        media = result.get('media') or (results[0].get('media', results[0]) if results else {})
-                        url = media.get('url')
-                        if not url:
-                            raise RuntimeError('완료된 Fish 결과의 다운로드 주소를 찾지 못했습니다.')
-                        saved.update(url=url, state='completed')
-                        store.save(job)
-                        output = folder / (f"motion-{stable_hash(saved['asset_key'])}.mp4" if job.workflow_version >= 2 else f'motion-{motion.photo:03}.mp4')
-                        await performance.wait('motion.download', self.fish.download(url, output), photo=motion.photo)
-                        if min(await asyncio.to_thread(video_size, output)) < MIN_MOTION_SIDE:
-                            raise RuntimeError(f'Fish 결과가 {MIN_MOTION_SIDE}p보다 작습니다. 이 결과는 영상에 사용하지 않습니다.')
-                        saved['file'] = output.name
-                        store.save(job)
-                        break
-                    await performance.wait('motion.poll_wait', asyncio.sleep(min(max(value.get('poll_after_seconds', 60), 5), 60)), photo=motion.photo)
-                else:
-                    raise RuntimeError('움직임 생성 대기 시간이 초과되었습니다. 저장된 ID로 재개할 수 있습니다.')
-
-        async def voices():
-            for scene_index, scene in enumerate(job.storyboard.scenes):
-                key = str(scene_index)
-                saved = job.narration.setdefault(key, {})
-                if saved.get('file') and (folder / saved['file']).exists():
-                    continue
-                asset_key = assets.cache_key(job, assets.voice_key(job, scene))
-                if job.workflow_version >= 2 and job.assets.get(asset_key, {}).get('file'):
-                    job.narration[key] = dict(job.assets[asset_key])
-                    continue
-                saved['asset_key'] = asset_key
-                saved['text'] = scene.text
-                output = folder / (f'voice-{stable_hash(asset_key)}.mp3' if job.workflow_version >= 2 else f'voice-{scene_index:03}.mp3')
-                async def submitted(data):
-                    saved.update(data)
+        async def video(motion):
+            key = str(motion.photo)
+            saved = job.generated[key]
+            if saved.get('file') and (folder / saved['file']).exists():
+                return
+            generation_id = saved.get('generation_id')
+            if not generation_id:
+                raise RuntimeError('움직임 생성 ID가 없습니다. 견적 단계로 돌아가 주세요.')
+            for _ in range(120):
+                value = await performance.wait('motion.status', self.fish.call('get_generation_status', {'generation_id': generation_id}), photo=motion.photo)
+                status = value.get('status')
+                if status in {'failed', 'cancelled'}:
+                    saved['state'] = status
                     assets.capture(job)
                     store.save(job)
-                if saved.get('url'):
-                    await performance.wait('voice.download', self.fish.download(saved['url'], output), scene=scene_index)
-                elif saved.get('state') == 'submitted':
-                    if not saved.get('project_id') or not saved.get('block'):
-                        raise RuntimeError('중단된 음성 생성은 자동 재요청하지 않습니다. Fish History 음성을 복구해 주세요.')
-                    await performance.wait('voice.recover', self.drama.recover(saved, output, submitted), scene=scene_index)
-                else:
-                    item = next(item for item in job.quote['voices'] if item['scene'] == scene_index)
-                    await performance.wait('voice.generate', self.drama.generate(scene.text, item['credits'], output, submitted, item), scene=scene_index)
-                saved['file'] = output.name
+                    raise RuntimeError('Fish 움직임 생성이 실패했습니다. 저장된 ID: ' + generation_id)
+                if status in {'completed', 'succeeded', 'finished'}:
+                    result = await performance.wait('motion.result', self.fish.call('get_generation_result', {'generation_id': generation_id}), photo=motion.photo)
+                    results = result.get('results', [])
+                    media = result.get('media') or (results[0].get('media', results[0]) if results else {})
+                    url = media.get('url')
+                    if not url:
+                        raise RuntimeError('완료된 Fish 결과의 다운로드 주소를 찾지 못했습니다.')
+                    saved.update(url=url, state='completed')
+                    store.save(job)
+                    output = folder / (f"motion-{stable_hash(saved['asset_key'])}.mp4" if job.workflow_version >= 2 else f'motion-{motion.photo:03}.mp4')
+                    await performance.wait('motion.download', self.fish.download(url, output), photo=motion.photo)
+                    if min(await asyncio.to_thread(video_size, output)) < MIN_MOTION_SIDE:
+                        raise RuntimeError(f'Fish 결과가 {MIN_MOTION_SIDE}p보다 작습니다. 이 결과는 영상에 사용하지 않습니다.')
+                    saved['file'] = output.name
+                    store.save(job)
+                    break
+                await performance.wait('motion.poll_wait', asyncio.sleep(min(max(value.get('poll_after_seconds', 60), 5), 60)), photo=motion.photo)
+            else:
+                raise RuntimeError('움직임 생성 대기 시간이 초과되었습니다. 저장된 ID로 재개할 수 있습니다.')
+
+        async def voice(scene_index):
+            scene = job.storyboard.scenes[scene_index]
+            key = str(scene_index)
+            saved = job.narration.setdefault(key, {})
+            if saved.get('file') and (folder / saved['file']).exists():
+                return
+            asset_key = assets.cache_key(job, assets.voice_key(job, scene))
+            if job.workflow_version >= 2 and job.assets.get(asset_key, {}).get('file'):
+                job.narration[key] = dict(job.assets[asset_key])
+                return
+            saved['asset_key'] = asset_key
+            saved['text'] = scene.text
+            output = folder / (f'voice-{stable_hash(asset_key)}.mp3' if job.workflow_version >= 2 else f'voice-{scene_index:03}.mp3')
+            async def submitted(data):
+                saved.update(data)
                 assets.capture(job)
                 store.save(job)
+            if saved.get('url'):
+                await performance.wait('voice.download', self.fish.download(saved['url'], output), scene=scene_index)
+            elif saved.get('state') == 'submitted':
+                if not saved.get('project_id') or not saved.get('block'):
+                    raise RuntimeError('중단된 음성 생성은 자동 재요청하지 않습니다. Fish History 음성을 복구해 주세요.')
+                await performance.wait('voice.recover', self.drama.recover(saved, output, submitted), scene=scene_index)
+            else:
+                item = next(item for item in job.quote['voices'] if item['scene'] == scene_index)
+                await performance.wait('voice.generate', self.drama.generate(scene.text, item['credits'], output, submitted, item), scene=scene_index)
+            saved['file'] = output.name
+            assets.capture(job)
+            store.save(job)
+
+        async def voices():
+            if not narrated:
+                return
+            groups = {}
+            for index, scene in enumerate(job.storyboard.scenes):
+                key = assets.cache_key(job, assets.voice_key(job, scene)) if job.workflow_version >= 2 else str(index)
+                groups.setdefault(key, []).append(index)
+            async def group(indices):
+                def priority(index):
+                    record = job.narration.get(str(index), {})
+                    return (record.get('state') == 'submitted',
+                            bool(record.get('file') and (folder / record['file']).is_file()),
+                            bool(record.get('url')))
+                leader = max(indices, key=priority)
+                record = job.narration.setdefault(str(leader), {})
+                # Alias before submission: capture() must not overwrite a pending shared
+                # asset with another scene's older, merely quoted record.
+                for index in indices:
+                    job.narration[str(index)] = record
+                await voice(leader)
+                for index in indices:
+                    job.narration[str(index)] = dict(job.narration[str(leader)])
+                assets.capture(job)
+                store.save(job)
+            await parallel(groups.values(), group, 3)
 
         # Both run to the end even if one fails, so no paid request is cut off mid-way.
         outcomes = await asyncio.gather(
-            performance.wait('motion.total', videos()),
+            performance.wait('motion.total', parallel(job.storyboard.motion, video, 3)),
             performance.wait('voice.total', voices()), return_exceptions=True)
         for outcome in outcomes:
             if isinstance(outcome, BaseException):
@@ -328,7 +411,8 @@ class Pipeline:
         if not assets.ready(job, job_path(job.id)):
             raise ValueError('미리보기에 필요한 음성·움직임을 먼저 생성해 주세요.')
         revision = assets.render_revision(job)
-        self.update(job, 'previewing', '음성·움직임·자막을 1080p 미리보기로 합성하고 있습니다.')
+        self.update(job, 'previewing', '음성·움직임·자막을 1080p 미리보기로 합성하고 있습니다.'
+                    if domains.load(job.domain).features.narration else '움직임·자막을 음성 없이 1080p 미리보기로 합성하고 있습니다.')
         def progress(message):
             job.message = message
             store.save(job)
