@@ -117,7 +117,16 @@ class DomainApiTests(unittest.TestCase):
         listed = {item['id']: item['domain'] for item in self.client.get('/api/jobs', headers=self.headers).json()}
         self.assertEqual(listed[stay['id']], 'stay')
         names = [d['id'] for d in self.client.get('/api/domains', headers=self.headers).json()]
-        self.assertEqual(names, ['stay', 'shopping'])
+        self.assertEqual(names, ['stay', 'stay-silent', 'shopping'])
+
+    def test_stay_categories_and_silent_upload(self):
+        categories = self.client.get('/api/domains').json()
+        self.assertEqual([d['label'] for d in categories], ['숙소(음성O)', '숙소(음성X)', '쇼핑'])
+        silent = self.upload('stay-silent')
+        self.assertEqual(silent.status_code, 200)
+        self.assertEqual(silent.json()['domain'], 'stay-silent')
+        self.assertFalse(domains.load('stay-silent').features.narration)
+        self.assertEqual(domains.load('stay-silent').skill('SKILL_MOTION.md'), domains.load('stay').skill('SKILL_MOTION.md'))
 
 def tone(frames):
     return b''.join(struct.pack('<h', round(8000 * math.sin(2 * math.pi * 440 * i / 48000))) for i in range(frames))
