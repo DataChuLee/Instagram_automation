@@ -34,13 +34,16 @@ def style_file():
     return paths.DATA / 'style.json'  # Last saved caption style and speed; new jobs start from it.
 
 
-def new_job(**values):
+def saved_options():
     try:
         saved = json.loads(style_file().read_text(encoding='utf-8'))
-        options = CreateOptions(caption=saved['caption'], speed=saved['speed'])
+        return CreateOptions(caption=saved['caption'], speed=saved['speed'])
     except (OSError, ValueError, KeyError, TypeError):
-        options = CreateOptions()
-    return Job(id=uuid.uuid4().hex, options=options, **values)
+        return CreateOptions()
+
+
+def new_job(**values):
+    return Job(id=uuid.uuid4().hex, options=saved_options(), **values)
 
 
 def export_files(job):
@@ -367,6 +370,11 @@ async def import_collection(value: dict):
                        {'name': f"{manifest['name']} · {title}", 'labels': labels, 'source_url': entry['url']}))
     source = {'name': manifest['name'], 'url': manifest['source_url'], 'collection_id': collection_id}
     return add_photos(job, inputs, source).model_dump()
+
+
+@app.get('/api/style')
+async def saved_style():
+    return saved_options().model_dump()
 
 
 @app.get('/api/jobs/{job_id}')

@@ -46,6 +46,7 @@ class SavedStyleAndExportTests(unittest.TestCase):
                              'background_opacity': 0.5, 'shadow': 0}, 'speed': 1.1}
         response = self.client.post(f'/api/jobs/{first["id"]}/style', headers=self.headers, json=style)
         self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.get('/api/style').json()['caption'], style['caption'])
         second = self.upload()
         self.assertEqual(second['options']['caption'], style['caption'])
         self.assertEqual(second['options']['speed'], 1.1)

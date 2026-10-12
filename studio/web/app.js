@@ -48,7 +48,7 @@ window.addEventListener('beforeunload',event=>{if(hasUnsavedEdits()){event.preve
 function numericValid(){return numericControls.every(id=>$(id+'Input').validity.valid);}
 function caption(){if(!numericValid())throw new Error('글자 크기와 X/Y 위치의 입력 범위를 확인해 주세요.');return {font_size:Number($('fontSize').value),x:Number($('posX').value),y:Number($('posY').value),color:$('color').value,outline:Number($('outline').value),background_opacity:Number($('bgOpacity').value)/100,shadow:Number($('shadow').value)};}
 function options(){return {max_motion:Number($('motion').value),caption:caption(),speed:Number($('speed').value)};}
-function loadStyle(){if(!job)return;const c=job.options.caption;for(const [id,key] of [['fontSize','font_size'],['posX','x'],['posY','y'],['color','color'],['outline','outline'],['shadow','shadow']])$(id).value=c[key];for(const id of numericControls){$(id+'Input').value=$(id).value;$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}$('bgOpacity').value=Math.round(c.background_opacity*100);$('speed').value=String(job.options.speed);motionOptions();updateOutputs();}
+function loadStyle(options=job?.options){if(!options)return;const c=options.caption;for(const [id,key] of [['fontSize','font_size'],['posX','x'],['posY','y'],['color','color'],['outline','outline'],['shadow','shadow']])$(id).value=c[key];for(const id of numericControls){$(id+'Input').value=$(id).value;$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}$('bgOpacity').value=Math.round(c.background_opacity*100);$('speed').value=String(options.speed);motionOptions();updateOutputs();}
 function motionOptions(){
   $('motion').value=String(Math.min(Number($('motion').defaultValue),job?.photos.length||0));
 }
@@ -299,6 +299,8 @@ $('newJob').onclick=()=>{
   for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','captionText'])$(id).value=$(id).defaultValue;
   $('speed').value='1';for(const id of numericControls){$(id+'Error').hidden=true;$(id+'Input').removeAttribute('aria-invalid');}
   $('files').value='';motionOptions();updateOutputs();drawPhotos();drawScript();drawStatus();
+  // Show the last saved caption style right away; the next upload starts from it.
+  api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});
 };
 $('enhance').onclick=action(()=>enhancePhotos());
 $('analyze').onclick=action(async()=>{if(job.storyboard&&!window.confirm('사진을 다시 분석하면 현재 대본과 움직임 구성이 새로 작성됩니다. 다시 분석할까요?'))return;await planTransaction(async()=>{await persistEdits();await api(`/api/jobs/${job.id}/analyze`,options());job=await api('/api/jobs/'+job.id);});});
@@ -470,4 +472,4 @@ document.addEventListener('keydown',event=>{
   event.preventDefault();action(()=>stepPhoto(event.key==='ArrowLeft'?-1:1))();
 });
 new ResizeObserver(entries=>{document.documentElement.style.setProperty('--toolbar-offset',`${Math.ceil(entries[0].target.getBoundingClientRect().height)+24}px`);}).observe(document.querySelector('.workflow-toolbar'));
-drawStatus();restoreCollection();history().catch(showError);(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
+drawStatus();restoreCollection();history().catch(showError);api('/api/style').then(saved=>{if(!job)loadStyle(saved);}).catch(()=>{});(async()=>{let value=await connections();for(let i=0;i<20&&value.fish_busy&&!value.fish;i++){await new Promise(r=>setTimeout(r,1000));value=await connections();}return value;})().then(value=>{connectionState=value;drawWorkflow(Boolean(sourceBusy||job&&busyStates.has(job.state)));if(!value.codex||!value.fish)$('settings').showModal();}).catch(showError);
