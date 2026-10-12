@@ -66,6 +66,7 @@ class Features(BaseModel):
     link_collection: bool = False  # Yeogi accommodation links only.
     enhance: bool = True
     ai_composition: bool = True
+    narration: bool = True
 
 
 # Engine-owned types: what the photo and video pipelines actually store. Domains link to them, never redefine them.
@@ -240,6 +241,19 @@ def _catalog():
             problems[domain_id] = f'{domain_id}-shortform을 쓸 수 없어요: {error}'
     for message in problems.values():
         log.warning(message)
+    if 'stay' in found:
+        # Both stay categories share schemas, prompts and user overrides.
+        stay = found['stay']
+        stay.label = '숙소(음성O)'
+        silent = stay.model_copy(deep=True)
+        silent.id, silent.label, silent.order = 'stay-silent', '숙소(음성X)', stay.order + 1
+        silent.features.narration = False
+        silent.min_media = 8
+        silent.ui['intro'] = '숙소 사진을 넣고, 음성 없이 자막으로 이야기를 전하세요.'
+        silent.ui['upload_title'] = '숙소 사진을 넣고 8~10장을 골라 주세요'
+        silent.ui['upload_hint'] = '사진 8~10장 · 장당 2초 · 총 16~20초 · JPG, PNG, WebP'
+        silent.ui['caption_default'] = '감성 숙소 찾는다면\n댓글 남겨주세요'
+        found['stay-silent'] = silent
     return found, problems
 
 
