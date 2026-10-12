@@ -12,6 +12,8 @@ from .paths import job_path
 def select(job, ids):
     if not isinstance(ids, list) or not 1 <= len(ids) <= 60 or any(not isinstance(i, str) for i in ids):
         raise ValueError('구성에 사용할 사진은 1~60장입니다.')
+    if job.domain == 'stay-silent' and not 8 <= len(ids) <= 10:
+        raise ValueError('음성X 영상에 사용할 사진은 8~10장입니다.')
     pool = {p['id']: p for p in job.candidates}
     if len(set(ids)) != len(ids) or not set(ids) <= pool.keys():
         raise ValueError('중복되거나 존재하지 않는 후보 사진입니다.')
