@@ -19,8 +19,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from . import assets, codex, collector, composition, domains, enhance, performance, recommendation, store, video_models
 from .drama import Drama
 from .fish import Fish
-from .media import caption_image, crop_photo, crop_video_frame, preview_image
-from .models import ApproveRequest, CaptionStyle, CreateOptions, CropBox, CropFocus, Job, Storyboard
+from .media import caption_image, caption_segments, crop_photo, crop_video_frame, preview_image
+from .models import ApproveRequest, CaptionPresetRequest, CaptionStyle, CreateOptions, CropBox, CropFocus, Job, Storyboard
 from .paths import DATA, RESOURCES, initialize, job_path
 from .pipeline import Pipeline
 
@@ -44,7 +44,10 @@ def saved_options():
 
 def new_job(domain='stay', **values):
     domains.load(domain)  # Rejects an unknown domain before anything is saved.
-    return Job(id=uuid.uuid4().hex, options=saved_options(), domain=domain, **values)
+    options = saved_options()
+    if domain == 'stay-silent':
+        options.caption = CaptionStyle(color='#FFFFFF', align='left', x=-35, y=-30)
+    return Job(id=uuid.uuid4().hex, options=options, domain=domain, **values)
 
 
 def link_collection(job_or_domain):
@@ -57,6 +60,8 @@ def export_files(job):
     """Newest file on disk per download: the last final export, or a later preview when there is one."""
     folder, found = job_path(job.id), {}
     for name, key in EXPORTS.items():
+        if key == 'audio' and not domains.load(job.domain).features.narration:
+            continue
         paths = [folder / name] + ([folder / job.preview[key]] if job.preview and job.preview.get(key) else [])
         paths = [path for path in paths if path.is_file()]
         if paths:
@@ -501,11 +506,61 @@ async def saved_style():
     return saved_options().model_dump()
 
 
+def caption_presets_file():
+    from . import paths
+    return paths.DATA / 'caption-presets.json'
+
+
+def read_caption_presets():
+    path = caption_presets_file()
+    if not path.is_file():
+        return []
+    try:
+        items = json.loads(path.read_text(encoding='utf-8'))
+        if not isinstance(items, list):
+            raise ValueError('invalid presets')
+        return [{'id': item['id'], **CaptionPresetRequest.model_validate(item).model_dump()} for item in items]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ValueError('저장한 자막 설정 파일을 읽을 수 없습니다.') from error
+
+
+@app.get('/api/caption-presets')
+async def caption_presets():
+    with store.LOCK:
+        return read_caption_presets()
+
+
+@app.post('/api/caption-presets')
+async def save_caption_preset(value: CaptionPresetRequest):
+    with store.LOCK:
+        items = read_caption_presets()
+        item = next((p for p in items if p['name'] == value.name), None)
+        if item is None:
+            item = {'id': uuid.uuid4().hex}
+            items.append(item)
+        item.update(value.model_dump())
+        path = caption_presets_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix('.tmp')
+        temporary.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding='utf-8')
+        temporary.replace(path)
+        return item
+
+
 @app.get('/api/jobs/{job_id}')
-async def status(job_id: str):
+async def status(job_id: str, per_photo: bool = False):
     job = store.read(job_id)
     domains.load(job.domain)  # A job whose kind was removed cannot be edited; say so instead of failing later.
-    return job.model_dump() | {'preview_stale': bool(job.preview and job.preview.get('revision') != assets.render_revision(job)),
+    migration = bool(per_photo and job.domain == 'stay' and job.storyboard and not pipeline.busy(job_id) and not assets.pending(job)
+                     and any(len(s.photos) > 1 for s in job.storyboard.scenes))
+    if migration:
+        assets.capture(job)
+        job.storyboard = job.storyboard.per_photo()
+        assets.restore(job)
+        assets.invalidate(job)
+        job.message = '사진마다 대본을 한 칸씩 나눴습니다. 변경 사항을 저장한 뒤 미리보기를 확인해 주세요.'
+    return job.model_dump() | {'photo_plan_migration': migration,
+        'preview_stale': bool(job.preview and job.preview.get('revision') != assets.render_revision(job)),
         'media_ready': assets.ready(job, job_path(job.id)), 'pending_media': assets.pending(job),
         'export_files': export_files(job)}
 
@@ -518,6 +573,32 @@ async def analyze(job_id: str, options: CreateOptions):
     job.options = options
     store.save(job)
     pipeline.launch(job_id, pipeline.analyze)
+    return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/prepare', status_code=202)
+async def prepare(job_id: str, options: CreateOptions):
+    job = store.read(job_id)
+    editable(job)
+    assets.prepare_allowed(job)
+    domain = domains.load(job.domain)
+    if domain.media != 'photo' or not domain.features.enhance:
+        raise ValueError('이 영상 종류는 사진 동시 준비를 지원하지 않습니다.')
+    if len(job.photos) < domain.min_media:
+        raise ValueError(f'사진을 {domain.min_media}장 이상 준비해 주세요.')
+    if job.domain == 'stay-silent' and len(job.photos) > 10:
+        raise ValueError('음성X는 사용할 사진 8~10장을 먼저 골라 주세요.')
+    if not await codex.login_status():
+        raise ValueError('설정에서 ChatGPT 구독 계정으로 Codex에 로그인해 주세요.')
+    # Login checks yield: re-read before writing so a concurrent request cannot overwrite work.
+    job = store.read(job_id)
+    editable(job)
+    assets.prepare_allowed(job)
+    if len(job.photos) < domain.min_media:
+        raise ValueError(f'사진을 {domain.min_media}장 이상 준비해 주세요.')
+    job.options = options
+    store.save(job)
+    pipeline.launch(job_id, pipeline.prepare)
     return {'ok': True}
 
 
@@ -551,6 +632,8 @@ async def edit_storyboard(job_id: str, value: dict):
             plan = Storyboard.validate_video_plan(value, job.photos)
         else:
             plan = Storyboard.validate_plan(value, len(job.photos), len(job.photos), job.photo_order or list(range(len(job.photos))))
+            if job.domain == 'stay-silent':
+                plan.validate_silent(len(job.photos))
         assets.capture(job)
         assets.checkpoint(job)
         job.storyboard = plan
@@ -666,6 +749,8 @@ async def configure_composition(value: dict):
     target = value.get('target_count', 10)
     if type(target) is not int or not 1 <= target <= 60:
         raise ValueError('추천 장수는 1~60장입니다.')
+    if job.domain == 'stay-silent' and mode == 'ai' and not 8 <= target <= 10:
+        raise ValueError('음성X AI 추천은 사진 8~10장을 선택해 주세요.')
     picked = value.get('photos') if value.get('collection_id') else None
     if picked is not None and (not isinstance(picked, list) or any(not isinstance(i, str) for i in picked)):
         raise ValueError('가져올 사진 목록이 올바르지 않습니다.')
@@ -758,6 +843,8 @@ async def media_attempt(job_id: str, value: dict):
     if not job.storyboard:
         raise ValueError('대본을 먼저 작성해 주세요.')
     kind, index = value.get('kind'), value.get('index')
+    if kind == 'voice' and not domains.load(job.domain).features.narration:
+        raise ValueError('숙소(음성X) 작업에서는 음성을 생성하지 않습니다.')
     if type(index) is not int:
         raise ValueError('장면 또는 사진 번호를 확인해 주세요.')
     if kind == 'voice' and 0 <= index < len(job.storyboard.scenes):
@@ -829,6 +916,8 @@ async def recover_voice(job_id: str, scene: int, file: UploadFile = File(...)):
 
 async def recover_voice_asset(job_id, scene, file):
     job = store.read(job_id)
+    if not domains.load(job.domain).features.narration:
+        raise ValueError('숙소(음성X) 작업에서는 음성을 사용하지 않습니다.')
     if not job.storyboard or not 0 <= scene < len(job.storyboard.scenes):
         raise ValueError('복구할 수 없는 장면입니다.')
     data = await file.read(20 * 1024 * 1024 + 1)
@@ -857,6 +946,14 @@ async def recover_voice_asset(job_id, scene, file):
     assets.invalidate(job)
     store.save(job)
     return {'ok': True}
+
+
+@app.post('/api/jobs/{job_id}/caption-cues')
+async def photo_caption_cues(job_id: str, value: dict):
+    job = store.read(job_id)
+    text = str(value.get('text', ''))[:320]
+    style = CaptionStyle.model_validate(value.get('caption', {}))
+    return [text] if not domains.load(job.domain).features.narration else caption_segments(text, style)
 
 
 @app.post('/api/jobs/{job_id}/preview')
@@ -901,7 +998,7 @@ def video_preview(job, index, value, text, caption):
 
 
 @app.get('/api/jobs/{job_id}/files/{name}')
-async def files(job_id: str, name: str):
+async def files(job_id: str, name: str, download: bool = False):
     job = store.read(job_id)
     allowed = enhance.files(job) | {'stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3',
                                                'stay-script.txt', 'stay-reel.srt', 'preview.jpg', 'verification.json'}
@@ -915,4 +1012,4 @@ async def files(job_id: str, name: str):
     path = job_path(job_id) / name
     if not path.is_file():
         raise HTTPException(404)
-    return FileResponse(path, filename=name if name.endswith(('.mp4', '.mp3', '.txt', '.srt', '.json')) else None)
+    return FileResponse(path, filename=name if download or name.endswith(('.mp4', '.mp3', '.txt', '.srt', '.json')) else None)
