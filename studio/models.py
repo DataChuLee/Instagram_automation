@@ -95,8 +95,16 @@ class CropFocus(BaseModel):
     y: float = Field(0.5, ge=0, le=1)
 
 
+class ScriptOption(BaseModel):
+    """One full narration candidate: a text per scene, sharing the storyboard's scene grouping."""
+    title: str = Field(min_length=1, max_length=40)
+    texts: list[str] = Field(min_length=1)
+
+
 class Storyboard(BaseModel):
     scenes: list[Scene] = Field(min_length=1)
+    script_options: list[ScriptOption] = Field(default_factory=list, max_length=5)
+    script_choice: int = Field(0, ge=0)
     motion: list[Motion] = Field(default_factory=list)
     crop_focus: list[CropFocus] = Field(default_factory=list)
     motion_recommendations: list[MotionRecommendation] = Field(default_factory=list)
@@ -112,6 +120,11 @@ class Storyboard(BaseModel):
             raise ValueError('직접 구성의 사진 순서를 유지해야 합니다.')
         if len({scene.id for scene in plan.scenes}) != len(plan.scenes):
             raise ValueError('장면 ID가 중복되었습니다.')
+        if any(len(option.texts) != len(plan.scenes) or not all(0 < len(text.strip()) <= 160 for text in option.texts)
+               for option in plan.script_options):
+            raise ValueError('대본 후보의 장면 수가 맞지 않거나 빈 문장이 있습니다.')
+        if plan.script_choice >= max(1, len(plan.script_options)):
+            raise ValueError('선택한 대본 후보 번호가 올바르지 않습니다.')
         indices = [index for item in plan.motion for index in item.photos]
         if len(plan.motion) > max_motion:
             raise ValueError('움직임 장면 수가 설정 범위를 벗어났습니다.')

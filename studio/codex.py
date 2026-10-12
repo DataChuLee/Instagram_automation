@@ -11,6 +11,7 @@ from .paths import DATA, RESOURCES, initialize, job_path
 
 SKILLS = RESOURCES / 'studio/skills/stay-shortform'
 SKILL_FILES = ('SKILL_TEXT.md', 'SKILL_MOTION.md')  # Narration rules, then photo motion rules.
+SCRIPT_OPTIONS = 3  # Narration candidates the user chooses from.
 
 
 def executable():
@@ -73,6 +74,8 @@ async def analyze(job):
 사진 사용 순서는 반드시 {json.dumps(order)}를 지키세요. 모든 사진을 정확히 한 번 사용하세요.
 장면당 연속된 사진 1~3장을 배치하고 서로 다른 객실 종류는 다른 장면으로 구분하세요.
 text는 내레이션이며 화면 자막으로도 그대로 표시됩니다. id는 빈 문자열로 반환하세요.
+대본은 '대본 후보 3개' 규칙에 따라 서로 다른 각도로 정확히 {SCRIPT_OPTIONS}개를 script_options에 작성하세요. 장면 묶음(scenes의 photos)은 세 후보가 함께 쓰므로, 각 후보의 texts는 장면 수와 같은 개수로 장면 순서대로 쓰세요.
+scenes의 text에는 첫 번째 후보의 문장을 그대로 넣고 script_choice는 0으로 두세요.
 영상 전체는 약 {TARGET_SECONDS}초이고 사진 한 장이 약 {shot:.1f}초 보입니다. 내레이션 전체를 {TARGET_SECONDS}초 안팎(공백 포함 약 {TARGET_SECONDS * 7}자)에 맞추고, 장면의 사진 한 장마다 자막 구 1~2개가 걸리게 쓰세요.
 text는 장면마다 공백 포함 150자 이내의 완성된 문장으로 쓰고 마침표나 물음표로 끝내세요. 화면 자막은 쉼표·마침표 단위로 한 구씩 표시되므로 구 사이를 쉼표로 나누세요. 마지막 장면의 저장 유도 문장을 자르지 마세요.
 사진별 crop_focus를 0~1 좌표로 지정하세요.
@@ -87,6 +90,16 @@ selection_reasons는 빈 객체로 반환하세요.
 도구 사용·파일 수정 없이 지정 JSON 스키마 결과만 반환하세요.'''
     result = await run_structured(folder, prompt,
         [folder / photo['file'] for photo in job.photos], Storyboard.model_json_schema(), 'analysis')
+    options = result.get('script_options') or []
+    if len(options) < SCRIPT_OPTIONS:
+        raise ValueError('대본 후보가 부족합니다. 다시 분석해 주세요.')
+    result['script_options'] = options = options[:SCRIPT_OPTIONS]
+    result['script_choice'] = 0
+    scenes = result.get('scenes', [])
+    if any(len(option.get('texts', [])) != len(scenes) for option in options):
+        raise ValueError('대본 후보의 장면 수가 맞지 않습니다. 다시 분석해 주세요.')
+    for scene, text in zip(scenes, options[0]['texts']):
+        scene.update(text=text, id='')
     # Clip grouping and length come from the plan, not the model; only the prompts are Codex's.
     prompts = {item.get('photo'): item.get('prompt', '') for item in result.get('motion', [])}
     if any(not prompts.get(clip['photos'][0]) for clip in clips):
