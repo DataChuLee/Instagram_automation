@@ -116,7 +116,7 @@ def preview_image(photo: Path, text: str, style: CaptionStyle, focus=(0.5, 0.5))
 def allocate_frames(audio_seconds: float, motion_flags: list[bool], fps=30) -> list[int]:
     if not motion_flags:
         raise ValueError('사진이 없습니다.')
-    # No tail padding: narration is already trimmed of silence, so scenes run back to back.
+    # No tail padding: narration already ends with its sentence pause, so scenes run back to back.
     total = max(math.ceil(audio_seconds * fps), len(motion_flags) * 9)
     # Photos without a generated shot (older jobs) get less time than moving ones.
     weights = [2 if moving else 1 for moving in motion_flags]

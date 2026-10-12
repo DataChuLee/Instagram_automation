@@ -13,10 +13,11 @@ from .assets import render_revision
 from .models import MIN_MOTION_SIDE
 from .paths import RESOURCES, job_path
 
-# Drop leading silence and shrink every pause (mid-sentence and trailing) to 0.05s so speech runs back to back.
-TIGHTEN = ('silenceremove=start_periods=1:start_threshold=-40dB:start_silence=0'
-           ':stop_periods=-1:stop_duration=0.1:stop_threshold=-40dB:stop_silence=0.05')
-CAPTION_LEAD = 0.1  # Seconds a mid-scene caption appears before its estimated spoken start.
+# Pause lengths measured on the reference reel (2026-10-12): ~0.2s after each sentence, ~0.08s between phrases.
+SENTENCE_PAUSE = 0.25  # Breath after a sentence, scene ends included, so the next line does not run on.
+PHRASE_PAUSE = 0.08  # Longest pause kept inside a sentence; leading silence is dropped.
+SILENCE = 328  # About -40dBFS on 16-bit samples.
+CAPTION_LEAD = 0.1  # Seconds a mid-sentence caption appears before its estimated spoken start.
 
 
 def ffmpeg():
@@ -83,6 +84,51 @@ def speech_end(path, threshold=328):
     return 0.0
 
 
+def sentences(text):
+    return [part for part in re.split(r'(?<=[.?!])\s+', text.strip()) if part.strip()] or [text]
+
+
+def pace_pauses(source, target, breaks, scale=1.0, tail=SENTENCE_PAUSE):
+    """Rewrites a 16-bit wav with the `breaks` longest inner pauses set to SENTENCE_PAUSE, the tail to `tail` and
+    other pauses capped at PHRASE_PAUSE (lengths multiplied by `scale`). Returns each sentence's (start, end) seconds."""
+    with wave.open(str(source)) as audio:
+        params, rate, channels = audio.getparams(), audio.getframerate(), audio.getnchannels()
+        samples = array('h', audio.readframes(audio.getnframes()))
+    step = rate // 100 * channels  # 10ms blocks.
+    loud = [max(map(abs, samples[i:i + step]), default=0) >= SILENCE for i in range(0, len(samples), step)]
+    runs, start = [], None  # Quiet runs as (first block, end block).
+    for index, value in enumerate(loud + [True]):
+        if not value and start is None:
+            start = index
+        elif value and start is not None:
+            runs.append((start, index))
+            start = None
+    if not any(loud):
+        audio_out, spans = array('h'), []
+    else:
+        first, last = loud.index(True), len(loud) - loud[::-1].index(True)
+        inner = [r for r in runs if first < r[0] and r[1] <= last]
+        chosen = set(sorted(inner, key=lambda r: r[1] - r[0], reverse=True)[:breaks])
+        audio_out, spans, cursor, sentence_start = array('h'), [], first, 0.0
+        silence = lambda seconds: array('h', bytes(round(seconds * scale * rate) * channels * 2))
+        for begin, end in sorted(inner):
+            audio_out += samples[cursor * step:begin * step]
+            if (begin, end) in chosen:
+                spans.append((sentence_start, len(audio_out) / channels / rate))
+                audio_out += silence(SENTENCE_PAUSE)
+                sentence_start = len(audio_out) / channels / rate
+            else:
+                audio_out += samples[begin * step:min(end, begin + round(PHRASE_PAUSE * scale * 100)) * step]
+            cursor = end
+        audio_out += samples[cursor * step:last * step]
+        spans.append((sentence_start, len(audio_out) / channels / rate))
+        audio_out += silence(tail)
+    with wave.open(str(target), 'wb') as output:
+        output.setparams(params)
+        output.writeframes(audio_out.tobytes())
+    return [(begin / scale, end / scale) for begin, end in spans]
+
+
 def verify(path, decode=True):
     if video_size(path) != (1080, 1920):
         raise RuntimeError('출력 영상이 1080×1920이 아닙니다.')
@@ -115,29 +161,42 @@ def render(job, progress=lambda message: None, preview=False):
         audio = folder / record.get('file', '__missing__')
         if not audio.is_file():
             raise RuntimeError(f'{scene_index + 1}번 장면의 음성이 필요합니다.')
+        decoded, paced = export / f'decoded-{scene_index:03}.wav', export / f'paced-{scene_index:03}.wav'
         adjusted = export / f'audio-{scene_index:03}.wav'
-        run('-i', audio, '-af', f'{TIGHTEN},atempo={job.options.speed},loudnorm=I=-16:TP=-1.5:LRA=11',
+        run('-i', audio, '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', decoded)
+        lines = sentences(scene.text)
+        # Pauses are set before atempo, so they are stretched by the speed to land on the target length.
+        # A scene ending mid-sentence (",") flows into the next one with a phrase pause, not a breath.
+        tail = SENTENCE_PAUSE if re.search(r'[.?!…~]["\')\]]*$', scene.text.strip()) else PHRASE_PAUSE
+        spans = pace_pauses(decoded, paced, len(lines) - 1, job.options.speed, tail)
+        run('-i', paced, '-af', f'atempo={job.options.speed},loudnorm=I=-16:TP=-1.5:LRA=11',
             '-ar', '48000', '-ac', '2', adjusted)
         with wave.open(str(adjusted)) as source:
             seconds = source.getnframes() / source.getframerate()
         moving = [index in shots for index in scene.photos]
         counts = allocate_frames(seconds, moving)
         scene_duration = sum(counts) / 30
-        segments = caption_segments(scene.text, job.options.caption)
         scene_start = offset
+        if len(spans) != len(lines):  # Fewer pauses than sentences: time the whole scene as one sentence.
+            lines, spans = [scene.text], [(0.0, spans[-1][1] if spans else 0.0)]
+        spans[-1] = (spans[-1][0], min(speech_end(adjusted), scene_duration) or scene_duration)
+        # Each sentence's cues follow its own spoken span and split it by syllables, which track speech time;
+        # a new sentence's first cue waits for its voice, so captions change after the breath, not before it.
+        cues = []
+        for (begin, finish), line in zip(spans, lines):
+            segments = caption_segments(line, job.options.caption)
+            weights = [max(len(re.sub(r'\W', '', text)), 1) for text in segments]
+            boundary = 0
+            for part, text in enumerate(segments):
+                # Cues inside a sentence switch slightly early: a late caption reads as lag, an early one does not.
+                start = begin + (finish - begin) * boundary / sum(weights) - (CAPTION_LEAD if part else 0)
+                cues.append((text, max(start, 0) if cues else 0))
+                boundary += weights[part]
         caption_paths = []
-        # Cues follow the spoken span, not the padded scene, and split it by syllables, which track speech time.
-        spoken = min(speech_end(adjusted), scene_duration) or scene_duration
-        weights = [max(len(re.sub(r'\W', '', text)), 1) for text in segments]
-        # Cues inside a scene switch slightly early: a late caption reads as lag, an early one does not.
-        cut = lambda boundary: max(spoken * boundary / sum(weights) - CAPTION_LEAD, 0)
-        boundary = 0
-        for part, text in enumerate(segments):
+        for part, (text, start) in enumerate(cues):
             caption = export / f'caption-{scene_index:03}-{part:03}.png'
             caption_image(text, job.options.caption).save(caption)
-            start = cut(boundary) if part else 0
-            boundary += weights[part]
-            end = cut(boundary) if part < len(segments) - 1 else scene_duration
+            end = cues[part + 1][1] if part < len(cues) - 1 else scene_duration
             caption_paths.append((caption, start, end))
             subtitles.append(f'{len(subtitles)+1}\n{srt_time(offset+start)} --> {srt_time(offset+end)}\n{text}\n')
         padded = export / f'padded-{scene_index:03}.wav'
