@@ -5,7 +5,7 @@ import hashlib
 import uuid
 from pathlib import Path
 
-from . import assets, codex, composition, enhance, performance, recommendation, store
+from . import assets, codex, composition, domains, enhance, performance, recommendation, store
 from .media import crop_photo
 from .models import MIN_MOTION_SIDE, motion_fingerprint, stable_hash
 from .paths import job_path
@@ -64,6 +64,7 @@ class Pipeline:
         self.update(job, 'enhancing', f'고화질 변환 중 · 0/{total}장')
         folder = job_path(job_id)
         gate = asyncio.Semaphore(enhance.CONCURRENCY)
+        domain = job.domain
 
         async def one(index):
             async with gate:
@@ -71,7 +72,7 @@ class Pipeline:
                 original = photo.get('original_file', photo['file'])
                 target = f'{Path(original).stem}-enhanced.jpg'
                 try:
-                    await performance.wait('photo.enhance', enhance.enhance_photo(folder / original, folder / target), photo=index)
+                    await performance.wait('photo.enhance', enhance.enhance_photo(folder / original, folder / target, domain=domain), photo=index)
                     outcome = {'file': target}
                 except enhance.UsageLimit:
                     raise
@@ -105,10 +106,12 @@ class Pipeline:
             raise ValueError('제출한 생성 작업을 먼저 완료하거나 복구해 주세요.')
         if job.workflow_version < 2 and (job.generated or assets.voice_started(job)):
             raise ValueError('생성 결과가 있는 작업은 대본을 다시 분석할 수 없습니다. 새 작업을 만들어 주세요.')
-        self.update(job, 'analyzing', 'Codex가 사진을 보고 대본과 움직임 장면을 고르고 있습니다.')
+        self.update(job, 'analyzing', 'Codex가 영상을 보고 대본과 장면 구간, 자막 가림을 고르고 있습니다.' if domains.load(job.domain).media == 'video'
+                    else 'Codex가 사진을 보고 대본과 움직임 장면을 고르고 있습니다.')
         assets.capture(job)
         assets.checkpoint(job)
-        job.storyboard = await performance.wait('script.analyze', codex.analyze(job))
+        video = domains.load(job.domain).media == 'video'
+        job.storyboard = await performance.wait('script.analyze', codex.analyze_video(job) if video else codex.analyze(job))
         assets.restore(job)
         assets.invalidate(job)
         self.update(job, 'uploaded', '대본을 준비했습니다. 자막을 조절하고 크레딧 견적을 확인해 주세요.')
@@ -116,7 +119,7 @@ class Pipeline:
     @performance.operation
     async def recommend(self, job_id):
         job = store.read(job_id)
-        self.update(job, 'recommending', '전체 후보 사진을 평가하고 숙소 소개 구성을 추천합니다.')
+        self.update(job, 'recommending', domains.load(job.domain).text('recommend_progress', '전체 후보 사진을 평가하고 구성을 추천합니다.'))
         working = job.model_copy(deep=True)
         def progress(message):
             job.message = message

@@ -1,4 +1,4 @@
-"""Codex image_generation remake of stay photos: sharper, people removed, 9:16 portrait, brighter."""
+"""Codex image_generation remake of job photos (per-domain prompt): sharper, 9:16 portrait, brighter."""
 from __future__ import annotations
 
 import asyncio
@@ -8,10 +8,9 @@ from pathlib import Path
 
 from PIL import UnidentifiedImageError
 
-from . import codex
+from . import codex, domains
 from .media import crop_photo
 
-SKILL = codex.SKILLS / 'SKILL_ENHANCE.md'
 TIMEOUT = 300  # One photo took 40-90 s in the 2026-10-10 test.
 CONCURRENCY = 10  # A typical reel's photos all run at once; limits only the pace, not total Codex usage.
 
@@ -24,11 +23,11 @@ class UsageLimit(EnhanceError):
     pass
 
 
-def prompt():
-    return SKILL.read_text(encoding='utf-8')
+def prompt(domain='stay'):
+    return domains.load(domain).skill('SKILL_ENHANCE.md')
 
 
-async def enhance_photo(source: Path, target: Path):
+async def enhance_photo(source: Path, target: Path, domain='stay'):
     """Writes the remade photo to `target` as a 1080x1920 JPEG; leaves `target` untouched on failure."""
     env = codex.environment()
     args = [codex.executable(), 'exec', '--sandbox', 'read-only', '--skip-git-repo-check',
@@ -37,7 +36,7 @@ async def enhance_photo(source: Path, target: Path):
     process = await asyncio.create_subprocess_exec(*args, stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=env)
     try:
-        _, stderr = await asyncio.wait_for(process.communicate(prompt().encode('utf-8')), TIMEOUT)
+        _, stderr = await asyncio.wait_for(process.communicate(prompt(domain).encode('utf-8')), TIMEOUT)
     except asyncio.TimeoutError:
         process.kill()
         await process.wait()

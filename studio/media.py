@@ -31,6 +31,18 @@ def crop_photo(path: Path, focus_x=0.5, focus_y=0.5) -> Image.Image:
     return image.crop(box).resize(SIZE, Image.Resampling.LANCZOS)
 
 
+def crop_video_frame(path: Path, crop: dict) -> Image.Image:
+    """A source-video frame zoomed into 1080x1920 the way render.crop_filter does it."""
+    with Image.open(path) as source:
+        image = source.convert('RGB')
+    zoom, x, y = crop.get('zoom', 1.0), crop.get('x', 0.5), crop.get('y', 0.5)
+    scale = max(SIZE[0] * zoom / image.width, SIZE[1] * zoom / image.height)
+    image = image.resize((max(SIZE[0], round(image.width * scale)), max(SIZE[1], round(image.height * scale))),
+                         Image.Resampling.LANCZOS)
+    left, top = round((image.width - SIZE[0]) * x), round((image.height - SIZE[1]) * y)
+    return image.crop((left, top, left + SIZE[0], top + SIZE[1]))
+
+
 def wrap_caption(text: str, font, width=940, outline=8) -> str:
     draw = ImageDraw.Draw(Image.new('RGB', (1, 1)))
     lines, line = [], ''
@@ -75,6 +87,20 @@ def caption_image(text: str, style: CaptionStyle | None = None) -> Image.Image:
     return layer
 
 
+def badge_image(text: str, size=30) -> Image.Image:
+    """A small fixed notice (e.g. an affiliate disclosure) at the top left, below the Reels header."""
+    font = ImageFont.truetype(str(font_path()), size)
+    layer = Image.new('RGBA', SIZE)
+    draw = ImageDraw.Draw(layer)
+    left, top = 48, 230
+    bounds = draw.textbbox((left, top), text, font=font)
+    pad = round(size * 0.45)
+    draw.rounded_rectangle((bounds[0] - pad, bounds[1] - pad, bounds[2] + pad, bounds[3] + pad),
+                           radius=pad, fill=(0, 0, 0, 140))
+    draw.text((left, top), text, font=font, fill=(255, 255, 255, 235))
+    return layer
+
+
 def split_words(text: str, limit: int) -> list[str]:
     lines, line = [], ''
     for word in text.split():
@@ -116,7 +142,7 @@ def preview_image(photo: Path, text: str, style: CaptionStyle, focus=(0.5, 0.5))
 def allocate_frames(audio_seconds: float, motion_flags: list[bool], fps=30) -> list[int]:
     if not motion_flags:
         raise ValueError('사진이 없습니다.')
-    # No tail padding: narration is already trimmed of silence, so scenes run back to back.
+    # No tail padding: narration already ends with its sentence pause, so scenes run back to back.
     total = max(math.ceil(audio_seconds * fps), len(motion_flags) * 9)
     # Photos without a generated shot (older jobs) get less time than moving ones.
     weights = [2 if moving else 1 for moving in motion_flags]

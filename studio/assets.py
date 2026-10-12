@@ -1,4 +1,5 @@
 """Content-addressed media reuse, independent from scene and photo ordering."""
+from . import domains
 from .models import DRAMA_MODEL, VOICE_ID, stable_hash
 
 
@@ -61,10 +62,15 @@ def voice_started(job):
 
 
 def render_revision(job):
-    return stable_hash({'photos': [p.get('sha256', p.get('file')) for p in job.photos],
+    value = {'photos': [[p['sha256'], p.get('crop')] if p.get('kind') == 'video' else p.get('sha256', p.get('file'))
+                        for p in job.photos],  # Source videos also carry their crop; photo entries are unchanged.
         'storyboard': job.storyboard.model_dump() if job.storyboard else None,
         'caption': job.options.caption.model_dump(), 'speed': job.options.speed,
-        'voices': job.narration, 'motions': job.generated})
+        'voices': job.narration, 'motions': job.generated}
+    disclosure = domains.load(job.domain).disclosure
+    if disclosure:  # Only domains that show one; stay revisions keep their old value.
+        value['disclosure'] = disclosure
+    return stable_hash(value)
 
 
 def ready(job, folder):

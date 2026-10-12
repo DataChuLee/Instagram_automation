@@ -184,7 +184,7 @@ class EnhancePipelineTests(unittest.IsolatedAsyncioTestCase):
     def fake(self, outcomes):
         """outcomes maps source file name to None (success) or an exception to raise."""
         self.calls = []
-        async def enhance_photo(source, target):
+        async def enhance_photo(source, target, domain="stay"):
             self.calls.append(source.name)
             outcome = outcomes.get(source.name)
             if outcome:
@@ -217,7 +217,7 @@ class EnhancePipelineTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_photos_are_marked_while_enhancing(self):
         seen = []
-        async def enhance_photo(source, target):
+        async def enhance_photo(source, target, domain="stay"):
             seen.append([p.get('enhancing') for p in store.read(self.job.id).photos])
             target.write_bytes(b'enhanced')
         with patch('studio.pipeline.enhance.enhance_photo', side_effect=enhance_photo):

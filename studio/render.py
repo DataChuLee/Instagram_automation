@@ -8,16 +8,18 @@ import shutil
 from array import array
 from pathlib import Path
 
-from .media import allocate_frames, caption_image, caption_segments, crop_photo, cut_zoom, srt_time
+from . import domains
+from .media import allocate_frames, badge_image, caption_image, caption_segments, crop_photo, cut_zoom, srt_time
 from .assets import render_revision
 from .models import MIN_MOTION_SIDE
 from . import performance
 from .paths import RESOURCES, job_path
 
-# Drop leading silence and shrink every pause (mid-sentence and trailing) to 0.05s so speech runs back to back.
-TIGHTEN = ('silenceremove=start_periods=1:start_threshold=-40dB:start_silence=0'
-           ':stop_periods=-1:stop_duration=0.1:stop_threshold=-40dB:stop_silence=0.05')
-CAPTION_LEAD = 0.1  # Seconds a mid-scene caption appears before its estimated spoken start.
+# Pause lengths measured on the reference reel (2026-10-12): ~0.18s after each sentence, ~0.08s between phrases.
+SENTENCE_PAUSE = 0.15  # Breath after a sentence, scene ends included, so the next line does not run on.
+PHRASE_PAUSE = 0.08  # Longest pause kept inside a sentence; leading silence is dropped.
+SILENCE = 328  # About -40dBFS on 16-bit samples.
+CAPTION_LEAD = 0.1  # Seconds a mid-sentence caption appears before its estimated spoken start.
 
 
 def ffmpeg():
@@ -66,6 +68,35 @@ def video_size(path):
     return tuple(map(int, match.groups()))
 
 
+def video_info(path):
+    """(width, height, seconds) of a video file, or a ValueError when ffmpeg cannot read it."""
+    process = subprocess.run([ffmpeg(), '-hide_banner', '-i', str(path)], capture_output=True,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    text = process.stderr.decode('utf-8', 'replace')
+    size = re.search(r'Video:.*?\b(\d{2,5})x(\d{2,5})\b', text)
+    duration = re.search(r'Duration: (\d+):(\d+):([\d.]+)', text)
+    if not size or not duration:
+        raise ValueError('읽을 수 없는 영상 파일입니다.')
+    rotate = re.search(r'rotate\s*:\s*(-?\d+)|displaymatrix: rotation of (-?[\d.]+)', text)
+    width, height = map(int, size.groups())
+    if rotate and abs(round(float(rotate.group(1) or rotate.group(2)))) % 180 == 90:
+        width, height = height, width  # Phone clips store portrait video as rotated landscape.
+    return width, height, int(duration[1]) * 3600 + int(duration[2]) * 60 + float(duration[3])
+
+
+def video_frame(path, seconds, target, width=None):
+    """Saves the frame at `seconds` as a JPEG, optionally scaled to `width` pixels wide."""
+    run('-ss', f'{max(seconds, 0):.3f}', '-i', path, '-frames:v', '1',
+        *(['-vf', f'scale={width}:-2'] if width else []), '-q:v', '3', target)
+
+
+def crop_filter(crop):
+    """ffmpeg filter that zooms a source into 1080x1920; same geometry as media.crop_video_frame."""
+    zoom, x, y = crop.get('zoom', 1.0), crop.get('x', 0.5), crop.get('y', 0.5)
+    return (f'scale=w={round(1080 * zoom)}:h={round(1920 * zoom)}:force_original_aspect_ratio=increase:flags=lanczos,'
+            f'crop=1080:1920:(iw-1080)*{x:.4f}:(ih-1920)*{y:.4f}')
+
+
 @performance.measured('render.shot_detection')
 def shot_bounds(path, shots):
     """(start, end) seconds of each hard-cut shot in a clip, placing cuts at the strongest scene changes."""
@@ -100,6 +131,51 @@ def speech_end(path, threshold=328):
     return 0.0
 
 
+def sentences(text):
+    return [part for part in re.split(r'(?<=[.?!])\s+', text.strip()) if part.strip()] or [text]
+
+
+def pace_pauses(source, target, breaks, scale=1.0, tail=SENTENCE_PAUSE):
+    """Rewrites a 16-bit wav with the `breaks` longest inner pauses set to SENTENCE_PAUSE, the tail to `tail` and
+    other pauses capped at PHRASE_PAUSE (lengths multiplied by `scale`). Returns each sentence's (start, end) seconds."""
+    with wave.open(str(source)) as audio:
+        params, rate, channels = audio.getparams(), audio.getframerate(), audio.getnchannels()
+        samples = array('h', audio.readframes(audio.getnframes()))
+    step = rate // 100 * channels  # 10ms blocks.
+    loud = [max(map(abs, samples[i:i + step]), default=0) >= SILENCE for i in range(0, len(samples), step)]
+    runs, start = [], None  # Quiet runs as (first block, end block).
+    for index, value in enumerate(loud + [True]):
+        if not value and start is None:
+            start = index
+        elif value and start is not None:
+            runs.append((start, index))
+            start = None
+    if not any(loud):
+        audio_out, spans = array('h'), []
+    else:
+        first, last = loud.index(True), len(loud) - loud[::-1].index(True)
+        inner = [r for r in runs if first < r[0] and r[1] <= last]
+        chosen = set(sorted(inner, key=lambda r: r[1] - r[0], reverse=True)[:breaks])
+        audio_out, spans, cursor, sentence_start = array('h'), [], first, 0.0
+        silence = lambda seconds: array('h', bytes(round(seconds * scale * rate) * channels * 2))
+        for begin, end in sorted(inner):
+            audio_out += samples[cursor * step:begin * step]
+            if (begin, end) in chosen:
+                spans.append((sentence_start, len(audio_out) / channels / rate))
+                audio_out += silence(SENTENCE_PAUSE)
+                sentence_start = len(audio_out) / channels / rate
+            else:
+                audio_out += samples[begin * step:min(end, begin + round(PHRASE_PAUSE * scale * 100)) * step]
+            cursor = end
+        audio_out += samples[cursor * step:last * step]
+        spans.append((sentence_start, len(audio_out) / channels / rate))
+        audio_out += silence(tail)
+    with wave.open(str(target), 'wb') as output:
+        output.setparams(params)
+        output.writeframes(audio_out.tobytes())
+    return [(begin / scale, end / scale) for begin, end in spans]
+
+
 def verify(path, decode=True):
     if video_size(path) != (1080, 1920):
         raise RuntimeError('출력 영상이 1080×1920이 아닙니다.')
@@ -118,6 +194,11 @@ def render(job, progress=lambda message: None, preview=False, folder=None):
             raise RuntimeError('선택한 움직임 영상이 아직 없습니다. 생성 작업을 먼저 완료해 주세요.')
     export = folder / 'render'
     export.mkdir(exist_ok=True)
+    # A domain's notice (shopping: the affiliate disclosure) stays on the final reel, never on the clean video.
+    disclosure = domains.load(job.domain).disclosure
+    badge = export / 'disclosure.png' if disclosure else None
+    if badge:
+        badge_image(disclosure).save(badge)
     clips, clean_clips, audio_clips, subtitles, timeline = [], [], [], [], []
     offset = 0
     focus = {item.photo: (item.x, item.y) for item in job.storyboard.crop_focus}
@@ -128,41 +209,60 @@ def render(job, progress=lambda message: None, preview=False, folder=None):
             raise RuntimeError(f'생성 영상이 {MIN_MOTION_SIDE}p보다 작아 1080×1920 영상에 사용할 수 없습니다.')
         for photo, (start, end) in zip(motion.photos, shot_bounds(source, len(motion.photos))):
             shots[photo] = (source, start, end)
+    fill = {}  # shot -> filter zooming it into 1080x1920; generated clips are just center-cropped.
+    for index, segment in enumerate(job.storyboard.segments):  # Video domains: scenes index these segments.
+        item = job.photos[segment.source]
+        shots[index] = (folder / item['file'], segment.start, segment.end)
+        fill[index] = crop_filter(item.get('crop', {}))
     for scene_index, scene in enumerate(job.storyboard.scenes):
         record = job.narration.get(str(scene_index), {})
         audio = folder / record.get('file', '__missing__')
         if not audio.is_file():
             raise RuntimeError(f'{scene_index + 1}번 장면의 음성이 필요합니다.')
+        decoded, paced = export / f'decoded-{scene_index:03}.wav', export / f'paced-{scene_index:03}.wav'
         adjusted = export / f'audio-{scene_index:03}.wav'
-        run('-i', audio, '-af', f'{TIGHTEN},atempo={job.options.speed},loudnorm=I=-16:TP=-1.5:LRA=11',
+        run('-i', audio, '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', decoded)
+        lines = sentences(scene.text)
+        # Pauses are set before atempo, so they are stretched by the speed to land on the target length.
+        # A scene ending mid-sentence (",") flows into the next one with a phrase pause, not a breath.
+        tail = SENTENCE_PAUSE if re.search(r'[.?!…~]["\')\]]*$', scene.text.strip()) else PHRASE_PAUSE
+        spans = pace_pauses(decoded, paced, len(lines) - 1, job.options.speed, tail)
+        run('-i', paced, '-af', f'atempo={job.options.speed},loudnorm=I=-16:TP=-1.5:LRA=11',
             '-ar', '48000', '-ac', '2', adjusted)
         with wave.open(str(adjusted)) as source:
             seconds = source.getnframes() / source.getframerate()
         moving = [index in shots for index in scene.photos]
         counts = allocate_frames(seconds, moving)
         scene_duration = sum(counts) / 30
-        segments = caption_segments(scene.text, job.options.caption)
         scene_start = offset
+        if len(spans) != len(lines):  # Fewer pauses than sentences: time the whole scene as one sentence.
+            lines, spans = [scene.text], [(0.0, spans[-1][1] if spans else 0.0)]
+        spans[-1] = (spans[-1][0], min(speech_end(adjusted), scene_duration) or scene_duration)
+        # Each sentence's cues follow its own spoken span and split it by syllables, which track speech time;
+        # a new sentence's first cue waits for its voice, so captions change after the breath, not before it.
+        cues = []
+        for (begin, finish), line in zip(spans, lines):
+            segments = caption_segments(line, job.options.caption)
+            weights = [max(len(re.sub(r'\W', '', text)), 1) for text in segments]
+            boundary = 0
+            for part, text in enumerate(segments):
+                # Cues inside a sentence switch slightly early: a late caption reads as lag, an early one does not.
+                start = begin + (finish - begin) * boundary / sum(weights) - (CAPTION_LEAD if part else 0)
+                cues.append((text, max(start, 0) if cues else 0))
+                boundary += weights[part]
         caption_paths = []
-        # Cues follow the spoken span, not the padded scene, and split it by syllables, which track speech time.
-        spoken = min(speech_end(adjusted), scene_duration) or scene_duration
-        weights = [max(len(re.sub(r'\W', '', text)), 1) for text in segments]
-        # Cues inside a scene switch slightly early: a late caption reads as lag, an early one does not.
-        cut = lambda boundary: max(spoken * boundary / sum(weights) - CAPTION_LEAD, 0)
-        boundary = 0
-        for part, text in enumerate(segments):
+        for part, (text, start) in enumerate(cues):
             caption = export / f'caption-{scene_index:03}-{part:03}.png'
             caption_image(text, job.options.caption).save(caption)
-            start = cut(boundary) if part else 0
-            boundary += weights[part]
-            end = cut(boundary) if part < len(segments) - 1 else scene_duration
+            end = cues[part + 1][1] if part < len(cues) - 1 else scene_duration
             caption_paths.append((caption, start, end))
             subtitles.append(f'{len(subtitles)+1}\n{srt_time(offset+start)} --> {srt_time(offset+end)}\n{text}\n')
         padded = export / f'padded-{scene_index:03}.wav'
         run('-i', adjusted, '-af', 'apad', '-t', scene_duration, padded)
         audio_clips.append(padded)
         for photo_index, count, is_moving in zip(scene.photos, counts, moving):
-            progress(f'{photo_index + 1}/{len(job.photos)} 사진을 1080p로 합성 중입니다.')
+            progress(f'{photo_index + 1}/{len(job.storyboard.segments)} 구간을 1080p로 합성 중입니다.' if job.storyboard.segments
+                     else f'{photo_index + 1}/{len(job.photos)} 사진을 1080p로 합성 중입니다.')
             clip = export / f'clip-{len(clips):03}.mp4'
             clean_clip = export / f'clean-{len(clips):03}.mp4'
             if is_moving:
@@ -172,7 +272,7 @@ def render(job, progress=lambda message: None, preview=False, folder=None):
                 # upscale 720p-class clips to 1080×1920 and split long shots into punch-in cuts.
                 speed = min(max(count / 30 / max(end - start, 0.1), 0.5), 2.0)
                 base = (f'trim=start={start:.3f}:end={end:.3f},setpts=(PTS-STARTPTS)*{speed:.4f},'
-                        f'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,fps=30,'
+                        f"{fill.get(photo_index, 'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920')},fps=30,"
                         f'tpad=stop_mode=clone:stop_duration={count/30+1},'
                         f"zoompan=z='{cut_zoom(count)}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=1080x1920:fps=30,setsar=1")
             else:
@@ -192,6 +292,10 @@ def render(job, progress=lambda message: None, preview=False, folder=None):
                 output = f'cap{part}'
                 filters.append(f"[{current}][{part+1}:v]overlay=0:0:format=auto:enable='gte(t,{local_start})*lt(t,{local_end})'[{output}]")
                 current = output
+            if badge:
+                inputs += ['-loop', '1', '-i', badge]
+                filters.append(f'[{current}][{len(caption_paths)+1}:v]overlay=0:0:format=auto[badge]')
+                current = 'badge'
             filters.append(f'[{current}]format=yuv420p[v]')
             run(*inputs, '-filter_complex', ';'.join(filters),
                 '-map', '[clean]', *encoding, clean_clip, '-map', '[v]', *encoding, clip)

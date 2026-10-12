@@ -1,0 +1,125 @@
+{
+  "id": "shopping",
+  "label": "쇼핑",
+  "version": "1",
+  "order": 20,
+  "object_types": [
+    {
+      "name": "Product",
+      "label": "상품",
+      "description": "영상으로 소개하는 상품 하나. 대본에서는 이름 대신 '이거·이것'으로 가리킨다",
+      "properties": [
+        {
+          "name": "name",
+          "label": "상품명",
+          "source": "user"
+        },
+        {
+          "name": "memo",
+          "label": "핵심 특징·혜택",
+          "source": "user"
+        },
+        {
+          "name": "color",
+          "label": "색"
+        },
+        {
+          "name": "material",
+          "label": "소재·제형"
+        },
+        {
+          "name": "components",
+          "label": "구성품"
+        }
+      ],
+      "links": [
+        {
+          "name": "features",
+          "target": "Feature"
+        },
+        {
+          "name": "scenes",
+          "target": "UseScene"
+        }
+      ]
+    },
+    {
+      "name": "Feature",
+      "label": "특징",
+      "description": "영상이나 사용자 입력으로 확인되는 장점 하나",
+      "properties": [
+        {
+          "name": "claim",
+          "label": "장점"
+        },
+        {
+          "name": "evidence",
+          "label": "근거(사진·입력)"
+        }
+      ],
+      "links": [
+        {
+          "name": "product",
+          "target": "Product"
+        }
+      ]
+    },
+    {
+      "name": "UseScene",
+      "label": "사용 장면",
+      "description": "상품을 쓰는 상황과 사용 전후 결과",
+      "properties": [
+        {
+          "name": "problem",
+          "label": "곤란한 상황"
+        },
+        {
+          "name": "action",
+          "label": "사용 동작"
+        },
+        {
+          "name": "result",
+          "label": "결과"
+        }
+      ],
+      "links": [
+        {
+          "name": "product",
+          "target": "Product"
+        }
+      ]
+    }
+  ],
+  "features": {
+    "link_collection": false,
+    "enhance": false,
+    "ai_composition": false
+  },
+  "ui": {
+    "intro": "상품 영상을 넣고, 나만의 대본과 자막을 더하세요.",
+    "upload_title": "상품 영상 5~6개를 여기에 넣어 주세요",
+    "caption_default": "저 이거 몰라서 혼났어요.",
+    "preview_title": "SHOP<br>IN FRAME.",
+    "preview_text": "영상을 넣고<br>상품 이야기를 시작하세요.",
+    "photo_name": "상품 영상",
+    "upload_hint": "드래그하거나 클릭해서 선택 · MP4, MOV, WebM · 사용 권한이 있는 영상만 올려 주세요",
+    "facts_title": "상품 정보",
+    "facts_help": "대본의 사실 근거로만 쓰여요. 상품명은 영상에서 말하지 않아요. 가격·효능은 여기에 적은 것만 대본에 들어가요."
+  },
+  "disclosure": "광고 · 제휴 링크 포함",
+  "media": "video",
+  "min_media": 3,
+  "max_media": 10,
+  "links_from_system": [
+    {
+      "type": "SourceVideo",
+      "name": "shows",
+      "target": "Product | UseScene"
+    },
+    {
+      "type": "Scene",
+      "name": "shows",
+      "target": "UseScene"
+    }
+  ]
+}

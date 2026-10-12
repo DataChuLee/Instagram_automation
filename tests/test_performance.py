@@ -12,8 +12,14 @@ class PerformanceTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             with performance.run(folder, 'generate'):
+                both_started = asyncio.Event()
+                started = []
                 async def branch(name):
                     with performance.span(name):
+                        started.append(name)
+                        if len(started) == 2:
+                            both_started.set()
+                        await asyncio.wait_for(both_started.wait(), timeout=5)
                         await asyncio.to_thread(lambda: self.thread_span(performance))
                         await asyncio.sleep(0.01)
                 await asyncio.gather(branch('motion'), branch('voice'))
@@ -23,7 +29,10 @@ class PerformanceTests(unittest.IsolatedAsyncioTestCase):
             children = [row for row in rows if row['stage'] in ('motion', 'voice')]
             self.assertTrue(all(row['parent_id'] == root['span_id'] for row in children))
             self.assertTrue(all(row['status'] == 'ok' and row['seconds'] >= 0 for row in rows))
-            self.assertGreater(sum(row['seconds'] for row in children), root['seconds'])
+            # The child intervals must overlap; root setup/teardown time need not
+            # be smaller than the sum of child durations on a busy machine.
+            self.assertLess(max(row['offset_seconds'] for row in children),
+                            min(row['offset_seconds'] + row['seconds'] for row in children))
 
     def thread_span(self, performance):
         with performance.span('thread.work'):

@@ -10,21 +10,58 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import assets, codex, collector, composition, enhance, performance, recommendation, store, video_models
+from . import assets, codex, collector, composition, domains, enhance, performance, recommendation, store, video_models
 from .drama import Drama
 from .fish import Fish
-from .media import crop_photo, preview_image
-from .models import ApproveRequest, CaptionStyle, CreateOptions, CropFocus, Job, Storyboard
+from .media import caption_image, crop_photo, crop_video_frame, preview_image
+from .models import ApproveRequest, CaptionStyle, CreateOptions, CropBox, CropFocus, Job, Storyboard
 from .paths import DATA, RESOURCES, initialize, job_path
 from .pipeline import Pipeline
 
 TOKEN = secrets.token_urlsafe(32)
+EXPORTS = {'stay-reel.mp4': 'file', 'stay-video.mp4': 'video', 'stay-script.txt': 'script',
+           'stay-reel.srt': 'srt', 'stay-voice.mp3': 'audio'}  # Download name -> result/preview key.
+
+
+def style_file():
+    from . import paths  # Read at call time so the data folder can be redirected.
+    return paths.DATA / 'style.json'  # Last saved caption style and speed; new jobs start from it.
+
+
+def saved_options():
+    try:
+        saved = json.loads(style_file().read_text(encoding='utf-8'))
+        return CreateOptions(caption=saved['caption'], speed=saved['speed'])
+    except (OSError, ValueError, KeyError, TypeError):
+        return CreateOptions()
+
+
+def new_job(domain='stay', **values):
+    domains.load(domain)  # Rejects an unknown domain before anything is saved.
+    return Job(id=uuid.uuid4().hex, options=saved_options(), domain=domain, **values)
+
+
+def link_collection(job_or_domain):
+    domain = domains.load(job_or_domain if isinstance(job_or_domain, str) else job_or_domain.domain)
+    if not domain.features.link_collection:
+        raise ValueError(f'{domain.label} 작업에서는 링크로 사진을 가져올 수 없습니다. 사진을 직접 넣어 주세요.')
+
+
+def export_files(job):
+    """Newest file on disk per download: the last final export, or a later preview when there is one."""
+    folder, found = job_path(job.id), {}
+    for name, key in EXPORTS.items():
+        paths = [folder / name] + ([folder / job.preview[key]] if job.preview and job.preview.get(key) else [])
+        paths = [path for path in paths if path.is_file()]
+        if paths:
+            found[name] = max(paths, key=lambda path: path.stat().st_mtime).name
+    return found
 fish = Fish()
 drama = Drama(fish)
 pipeline = Pipeline(fish, drama)
@@ -45,6 +82,9 @@ def error_description(error):
 @asynccontextmanager
 async def lifespan(app):
     initialize()
+    from . import paths
+    (paths.DATA / 'domains').mkdir(parents=True, exist_ok=True)  # Where new or overriding short-form kinds go.
+    domains.reload()  # Logs any domain folder that cannot be used; the others still load.
     store.recover()
     collector.recover()
     spawn(restore_fish())
@@ -180,18 +220,130 @@ async def connect_drama():
 @app.get('/api/jobs')
 async def jobs():
     return [{'id': job.id, 'state': job.state, 'photos': len(job.photos), 'message': job.message,
-             'name': ' / '.join(source['name'] for source in job.sources)}
+             'name': ' / '.join(source['name'] for source in job.sources), 'domain': job.domain}
             for job in store.list_jobs()]
 
 
+@app.get('/api/domains')
+async def list_domains():
+    return [domains.public(domain) for domain in domains.all()]
+
+
+@app.get('/api/domains/problems')
+async def domain_problems():
+    return domains.problems()
+
+
 @app.post('/api/jobs')
-async def upload(files: list[UploadFile] = File(...)):
-    return add_photos(Job(id=uuid.uuid4().hex, workflow_version=2), await read_uploads(files)).model_dump()
+async def upload(files: list[UploadFile] = File(...), domain: str = Form('stay')):
+    job = new_job(domain, workflow_version=2)
+    if domains.load(domain).media == 'video':
+        return (await add_videos(job, files)).model_dump()
+    return add_photos(job, await read_uploads(files, domains.load(domain).max_media)).model_dump()
 
 
-async def read_uploads(files):
-    if not 1 <= len(files) <= 60:
-        raise ValueError('사진은 1~60장까지 넣어 주세요.')
+VIDEO_TYPES = {'.mp4', '.mov', '.m4v', '.webm'}
+VIDEO_BYTES, VIDEOS_BYTES = 300 * 1024 * 1024, 1536 * 1024 * 1024
+
+
+async def add_videos(job, files):
+    """Streams uploaded source videos into the job (video domains), with a thumbnail and a default crop each."""
+    from .render import video_frame, video_info
+    photos_editable(job)
+    domain = domains.load(job.domain)
+    folder = job_path(job.id)
+    folder.mkdir(parents=True, exist_ok=True)
+    seen = {photo['sha256'] for photo in job.photos}
+    total = sum(photo.get('bytes', 0) for photo in job.photos)
+    added = []
+    with tempfile.TemporaryDirectory(prefix='.videos-', dir=folder) as directory:
+        staging = Path(directory)
+        for file in files:
+            suffix = Path(file.filename or '').suffix.lower()
+            if suffix not in VIDEO_TYPES:
+                raise ValueError('MP4, MOV, WebM 영상을 넣어 주세요.')
+            index = len(job.photos) + len(added)
+            name, thumb = f'source-{index:03}{suffix}', f'source-{index:03}.jpg'
+            digest, size = hashlib.sha256(), 0
+            with open(staging / name, 'wb') as target:
+                while chunk := await file.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > VIDEO_BYTES or total + size > VIDEOS_BYTES:
+                        raise ValueError('영상 용량이 너무 큽니다. 영상당 300MB, 전체 1.5GB 이내로 넣어 주세요.')
+                    digest.update(chunk)
+                    target.write(chunk)
+            sha = digest.hexdigest()
+            if sha in seen:
+                continue
+            if len(job.photos) + len(added) >= domain.max_media:
+                raise ValueError(f'영상은 최대 {domain.max_media}개까지 넣을 수 있습니다.')
+            try:
+                width, height, duration = await asyncio.to_thread(video_info, staging / name)
+                await asyncio.to_thread(video_frame, staging / name, min(1.0, duration / 2), staging / thumb, 720)
+            except (ValueError, RuntimeError) as error:
+                raise ValueError(f'읽을 수 없는 영상 파일이 있습니다: {Path(file.filename or name).name}') from error
+            if duration < 1 or min(width, height) < 240:
+                raise ValueError('영상은 1초 이상, 짧은 변 240px 이상이어야 합니다.')
+            total += size
+            seen.add(sha)
+            added.append({'kind': 'video', 'name': Path(file.filename or name).name, 'file': name, 'thumb': thumb,
+                          'sha256': sha, 'width': width, 'height': height, 'duration': round(duration, 3),
+                          'bytes': size, 'crop': CropBox().model_dump()})
+        if not job.photos and not added:
+            raise ValueError('추가할 영상을 선택해 주세요.')
+        for video in added:
+            (staging / video['file']).replace(folder / video['file'])
+            (staging / video['thumb']).replace(folder / video['thumb'])
+    previous = len(job.photos)
+    job.photos.extend(added)
+    job.photo_order = (job.photo_order or list(range(previous))) + list(range(previous, len(job.photos)))
+    job.state, job.error = 'uploaded', None
+    job.message = f'영상 {len(job.photos)}개를 준비했습니다. 새 영상 {len(added)}개 추가.'
+    store.save(job)
+    return job
+
+
+@app.post('/api/jobs/{job_id}/videos')
+async def append_videos(job_id: str, files: list[UploadFile] = File(...)):
+    job = store.read(job_id)
+    if domains.load(job.domain).media != 'video':
+        raise ValueError('이 작업에는 사진을 넣어 주세요.')
+    return (await add_videos(job, files)).model_dump()
+
+
+@app.post('/api/jobs/{job_id}/sources/{index}/crop')
+async def source_crop(job_id: str, index: int, value: dict):
+    job = store.read(job_id)
+    editable(job)
+    if not 0 <= index < len(job.photos) or job.photos[index].get('kind') != 'video':
+        raise ValueError('영상 번호가 올바르지 않습니다.')
+    crop = CropBox.model_validate(dict(value, user=True)).model_dump()
+    if crop != job.photos[index].get('crop'):
+        assets.capture(job)
+        job.photos[index]['crop'] = crop
+        if job.storyboard:
+            assets.invalidate(job)
+        store.save(job)
+    return job.model_dump()
+
+
+@app.post('/api/jobs/{job_id}/facts')
+async def save_facts(job_id: str, value: dict):
+    job = store.read(job_id)
+    editable(job)
+    allowed = {prop.name for _, prop in domains.load(job.domain).facts()}
+    if not isinstance(value, dict) or set(value) - allowed:
+        raise ValueError('이 작업에 저장할 수 없는 정보가 있습니다.')
+    if any(not isinstance(text, str) or len(text.strip()) > 300 for text in value.values()):
+        raise ValueError('입력한 정보는 항목마다 300자 이내로 적어 주세요.')
+    job.facts = {key: text.strip() for key, text in value.items() if text.strip()}
+    store.save(job)
+    return job.model_dump()
+
+
+async def read_uploads(files, limit=60):
+    if not 1 <= len(files) <= limit:
+        raise ValueError(f'사진은 1~{limit}장까지 넣어 주세요.')
     inputs = []
     total = 0
     for file in files:
@@ -225,8 +377,9 @@ def add_photos(job, inputs, source_metadata=None):
             total += len(data)
             if len(data) > 20 * 1024 * 1024 or total > 300 * 1024 * 1024:
                 raise ValueError('사진 용량이 너무 큽니다. 사진당 20MB, 전체 300MB 이내로 넣어 주세요.')
-            if len(job.photos) + len(added) >= 60:
-                raise ValueError('첨부 사진과 링크 사진을 합쳐 최대 60장까지 넣을 수 있습니다.')
+            limit = domains.load(job.domain).max_media
+            if len(job.photos) + len(added) >= limit:
+                raise ValueError(f'첨부 사진과 링크 사진을 합쳐 최대 {limit}장까지 넣을 수 있습니다.')
             name = f'photo-{len(job.photos) + len(added):03}.jpg'
             try:
                 with Image.open(io.BytesIO(data)) as original:
@@ -314,13 +467,14 @@ async def collection_photo(collection_id: str, photo_id: str):
 @app.post('/api/jobs/import')
 async def import_collection(value: dict):
     collection_id = value.get('collection_id', '')
+    job = store.read(value['job_id']) if value.get('job_id') else new_job()
+    link_collection(job)
     manifest = collector.read(collection_id)
     if manifest['status'] == 'in_progress':
         raise ValueError('수집이 끝난 뒤 사진을 선택해 주세요.')
     selected = value.get('photos')
     if not isinstance(selected, list) or not 1 <= len(selected) <= 60 or any(not isinstance(p, str) for p in selected):
         raise ValueError('가져올 사진을 1~60장 선택해 주세요.')
-    job = store.read(value['job_id']) if value.get('job_id') else Job(id=uuid.uuid4().hex)
     photos_editable(job)
     inputs = []
     total = 0
@@ -342,14 +496,18 @@ async def import_collection(value: dict):
     return add_photos(job, inputs, source).model_dump()
 
 
+@app.get('/api/style')
+async def saved_style():
+    return saved_options().model_dump()
+
+
 @app.get('/api/jobs/{job_id}')
 async def status(job_id: str):
     job = store.read(job_id)
+    domains.load(job.domain)  # A job whose kind was removed cannot be edited; say so instead of failing later.
     return job.model_dump() | {'preview_stale': bool(job.preview and job.preview.get('revision') != assets.render_revision(job)),
         'media_ready': assets.ready(job, job_path(job.id)), 'pending_media': assets.pending(job),
-        'available_exports': [name for name in
-        ('stay-reel.mp4', 'stay-video.mp4', 'stay-script.txt', 'stay-reel.srt', 'stay-voice.mp3')
-        if (job_path(job_id) / name).is_file()]}
+        'export_files': export_files(job)}
 
 
 @app.post('/api/jobs/{job_id}/analyze')
@@ -379,6 +537,8 @@ async def style(job_id: str, options: CreateOptions):
     job.options.caption = options.caption
     job.options.speed = options.speed
     store.save(job)
+    initialize()
+    style_file().write_text(json.dumps({'caption': options.caption.model_dump(), 'speed': options.speed}), encoding='utf-8')
     return job.model_dump()
 
 
@@ -387,7 +547,10 @@ async def edit_storyboard(job_id: str, value: dict):
     job = store.read(job_id)
     if job.workflow_version >= 2:
         editable(job)
-        plan = Storyboard.validate_plan(value, len(job.photos), len(job.photos), job.photo_order or list(range(len(job.photos))))
+        if domains.load(job.domain).media == 'video':
+            plan = Storyboard.validate_video_plan(value, job.photos)
+        else:
+            plan = Storyboard.validate_plan(value, len(job.photos), len(job.photos), job.photo_order or list(range(len(job.photos))))
         assets.capture(job)
         assets.checkpoint(job)
         job.storyboard = plan
@@ -493,8 +656,10 @@ def editable(job):
 
 @app.post('/api/composition')
 async def configure_composition(value: dict):
-    job = store.read(value['job_id']) if value.get('job_id') else Job(id=uuid.uuid4().hex, workflow_version=2)
+    job = store.read(value['job_id']) if value.get('job_id') else new_job(value.get('domain', 'stay'), workflow_version=2)
     editable(job)
+    if value.get('collection_id'):
+        link_collection(job)
     mode = value.get('mode', 'manual')
     if mode not in {'manual', 'ai'}:
         raise ValueError('구성 방식이 올바르지 않습니다.')
@@ -701,7 +866,12 @@ async def preview(job_id: str, value: dict):
     if not 0 <= index < len(job.photos):
         raise ValueError('사진 번호가 올바르지 않습니다.')
     caption = CaptionStyle.model_validate(value.get('caption', {}))
-    text = value.get('text', '이런 숙소, 어때요?')[:320]
+    text = value.get('text', domains.load(job.domain).text('caption_default', '자막'))[:320]
+    if job.photos[index].get('kind') == 'video':
+        image = await asyncio.to_thread(video_preview, job, index, value, text, caption)
+        data = io.BytesIO()
+        image.save(data, format='JPEG', quality=92)
+        return Response(data.getvalue(), media_type='image/jpeg')
     focus = next(((item.x, item.y) for item in job.storyboard.crop_focus if item.photo == index),
                  (0.5, 0.5)) if job.storyboard else (0.5, 0.5)
     if 'focus' in value:
@@ -713,12 +883,30 @@ async def preview(job_id: str, value: dict):
     return Response(data.getvalue(), media_type='image/jpeg')
 
 
+def video_preview(job, index, value, text, caption):
+    """A source-video frame at `time` seconds, zoomed by the saved (or a draft) crop, with the caption on top."""
+    from .render import video_frame
+    source = job.photos[index]
+    seconds = min(max(float(value.get('time', 0) or 0), 0), max(source['duration'] - 0.05, 0))
+    crop = CropBox.model_validate(value['crop']).model_dump() if 'crop' in value else source.get('crop', {})
+    frames = job_path(job.id) / 'frames'
+    frames.mkdir(exist_ok=True)
+    frame = frames / f'{index:03}-{seconds:.2f}.jpg'
+    if not frame.is_file():
+        video_frame(job_path(job.id) / source['file'], seconds, frame)
+    image = crop_video_frame(frame, crop).convert('RGBA')
+    if text.strip():
+        image.alpha_composite(caption_image(text, caption))
+    return image.convert('RGB')
+
+
 @app.get('/api/jobs/{job_id}/files/{name}')
 async def files(job_id: str, name: str):
     job = store.read(job_id)
     allowed = enhance.files(job) | {'stay-reel.mp4', 'stay-video.mp4', 'stay-voice.mp3',
                                                'stay-script.txt', 'stay-reel.srt', 'preview.jpg', 'verification.json'}
     allowed |= {p['file'] for p in job.candidates if p.get('file') and not p.get('collection_id')}
+    allowed |= {p['thumb'] for p in job.photos if p.get('thumb')}  # Source-video thumbnails.
     if job.preview:
         allowed |= {job.preview[k] for k in ('file', 'video', 'audio', 'script', 'srt', 'verification') if k in job.preview}
     allowed |= {r['file'] for r in job.assets.values() if r.get('file', '').endswith('.mp4')}
