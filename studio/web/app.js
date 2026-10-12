@@ -65,17 +65,53 @@ async function updatePreview(){
   $('preview').hidden=false;$('previewEmpty').hidden=true;$('video').hidden=true;drawPreviewStatus(Boolean(sourceBusy||busyStates.has(job.state)));
 }
 function drawPhotos(){
-  const grid=$('photoGrid');grid.replaceChildren();$('photoCount').textContent=`사용 사진 ${job?job.photos.length:0}장`;if(!job)return;
+  const grid=$('photoGrid');photoDrag=null;grid.classList.remove('reordering');grid.replaceChildren();$('photoCount').textContent=`사용 사진 ${job?job.photos.length:0}장`;if(!job)return;
   const order=job.photo_order?.length?job.photo_order:job.photos.map((_,i)=>i);
-  order.forEach((index,position)=>{const photo=job.photos[index],card=document.createElement('div');card.className='ordered-photo';card.draggable=!planLocked();
-    card.ondragstart=e=>e.dataTransfer.setData('text/plain',String(position));card.ondragover=e=>e.preventDefault();card.ondrop=e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from)&&from>=0&&from<order.length)movePhoto(from,position).catch(showError);};
+  order.forEach((index,position)=>{const photo=job.photos[index],card=document.createElement('div');card.className='ordered-photo';card.onpointerdown=e=>grabPhoto(e,card,position);
     const button=document.createElement('button');button.title=photo.name;button.setAttribute('aria-label',`${position+1}번 사진 선택`);button.classList.toggle('selected',index===selectedPhoto);
-    const image=document.createElement('img');image.src=`/api/jobs/${job.id}/files/${photo.file}`;image.alt=photo.name;image.loading='lazy';const number=document.createElement('span');number.textContent=String(position+1).padStart(2,'0');button.append(image,number);
+    const image=document.createElement('img');image.src=`/api/jobs/${job.id}/files/${photo.file}`;image.alt=photo.name;image.loading='lazy';image.draggable=false;const number=document.createElement('span');number.textContent=String(position+1).padStart(2,'0');button.append(image,number);
     button.onclick=action(()=>selectPhoto(index));
     const controls=document.createElement('div');controls.className='photo-moves';for(const [label,delta] of [['←',-1],['→',1]]){const move=document.createElement('button');move.textContent=label;move.setAttribute('aria-label',`${position+1}번 사진 ${delta<0?'앞':'뒤'}으로 이동`);move.disabled=planLocked()||position+delta<0||position+delta>=order.length;move.onclick=action(()=>movePhoto(position,position+delta));controls.append(move);}card.append(button,controls);enhanceControls(card,button,photo,index,position);
     const reason=job.selection_reasons?.[photo.sha256]||job.storyboard?.selection_reasons?.[String(index)];if(reason){const details=document.createElement('small');details.textContent=reason;card.append(details);}grid.append(card);
   });drawCandidates();drawPhotoNav();
 }
+// 사진 끌어서 순서 바꾸기: 마우스는 6px 이상 끌면, 터치는 길게 누르면 시작한다.
+let photoDrag=null,photoClickBlock=0;
+function grabPhoto(e,card,from){
+  if(photoDrag||planLocked()||(e.pointerType==='mouse'&&e.button!==0)||e.target.closest('.photo-moves,.photo-enhance'))return;
+  photoDrag={card,from,id:e.pointerId,x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY,touch:e.pointerType!=='mouse',active:false};
+  if(photoDrag.touch)photoDrag.timer=setTimeout(startPhotoDrag,350);
+}
+function startPhotoDrag(){
+  const d=photoDrag;if(!d||d.active)return;d.active=true;d.card.classList.add('dragging');$('photoGrid').classList.add('reordering');
+  try{d.card.setPointerCapture(d.id);}catch{}navigator.vibrate?.(15);
+  const scroll=()=>{if(photoDrag!==d||!d.active)return;const grid=$('photoGrid'),r=grid.getBoundingClientRect(),edge=40;
+    const step=d.y<r.top+edge?-Math.ceil((r.top+edge-d.y)/4):d.y>r.bottom-edge?Math.ceil((d.y-r.bottom+edge)/4):0;
+    if(step){grid.scrollTop+=step;placeDraggedPhoto();}requestAnimationFrame(scroll);};
+  requestAnimationFrame(scroll);
+}
+function placeDraggedPhoto(){
+  const d=photoDrag,grid=$('photoGrid'),target=document.elementFromPoint(d.x,d.y)?.closest('.ordered-photo');
+  if(!target||target===d.card||target.parentElement!==grid)return;
+  const cards=[...grid.children];if(cards.indexOf(d.card)<cards.indexOf(target))target.after(d.card);else target.before(d.card);
+}
+function endPhotoDrag(drop){
+  const d=photoDrag;if(!d)return;photoDrag=null;clearTimeout(d.timer);if(!d.active)return;
+  photoClickBlock=Date.now()+400;d.card.classList.remove('dragging');$('photoGrid').classList.remove('reordering');
+  const to=[...$('photoGrid').children].indexOf(d.card);
+  if(!drop||to<0)drawPhotos();else if(to!==d.from)movePhoto(d.from,to).catch(error=>{drawPhotos();showError(error);});
+}
+document.addEventListener('pointermove',e=>{
+  const d=photoDrag;if(!d||e.pointerId!==d.id)return;d.x=e.clientX;d.y=e.clientY;
+  if(!d.active){if(Math.hypot(d.x-d.x0,d.y-d.y0)<6)return;if(d.touch){endPhotoDrag(false);return;}startPhotoDrag();}
+  e.preventDefault();placeDraggedPhoto();
+});
+document.addEventListener('pointerup',e=>{if(photoDrag?.id===e.pointerId)endPhotoDrag(true);});
+document.addEventListener('pointercancel',e=>{if(photoDrag?.id===e.pointerId)endPhotoDrag(false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&photoDrag?.active){e.preventDefault();endPhotoDrag(false);}},true);
+document.addEventListener('touchmove',e=>{if(photoDrag?.active)e.preventDefault();},{passive:false});
+document.addEventListener('contextmenu',e=>{if(photoDrag)e.preventDefault();});
+document.addEventListener('click',e=>{if(Date.now()<photoClickBlock){e.preventDefault();e.stopPropagation();photoClickBlock=0;}},true);
 function enhanceLocked(){return Boolean(!job||sourceBusy||busyStates.has(job.state)||job.pending_media||job.storyboard||Object.keys(job.generated).length||Object.keys(job.narration).length||job.result);}
 function enhanceControls(card,button,photo,index,position){
   const enhanced=photo.enhanced||{},done=enhanced.state==='done',active=done&&photo.file===enhanced.file;
@@ -166,7 +202,7 @@ $('saveStyle').onclick=action(savePlan);
 $('saveEdits').onclick=action(savePlan);
 function photosLocked(){return Boolean(job&&(busyStates.has(job.state)||job.pending_media||(job.workflow_version<2&&(job.storyboard||Object.keys(job.generated).length||Object.keys(job.narration).length||job.result))));}
 function drawStatus(){
-  const busy=sourceBusy||(job&&busyStates.has(job.state));
+  const busy=sourceBusy||(job&&busyStates.has(job.state));$('photoGrid').classList.toggle('sortable',Boolean(job)&&!planLocked());
   const generated=job&&job.workflow_version<2&&(Object.keys(job.generated).length||Object.keys(job.narration).length||job.result);
   $('analyze').disabled=!job||busy||Boolean(generated)||!numericValid(); $('enhance').disabled=!job?.photos.length||enhanceLocked(); $('enhanceHelp').hidden=!job?.photos.length||Boolean(job.storyboard); $('saveStyle').disabled=!job||busy||!numericValid(); $('quote').disabled=!job?.storyboard||busy||!numericValid()||!planValid();
   $('newJob').disabled=sourceBusy; $('files').disabled=sourceBusy||photosLocked();
