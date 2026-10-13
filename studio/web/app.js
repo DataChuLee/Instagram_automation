@@ -267,7 +267,7 @@ function drawPhotoNav(){
   $('prevPhoto').disabled=position<=0;$('nextPhoto').disabled=position>=order.length-1;
 }
 function planLocked(){return Boolean(job&&(busyStates.has(job.state)||sourceBusy||job.pending_media||Object.values(job.generated).concat(Object.values(job.narration)).some(g=>['submitting','submitted'].includes(g.state)&&!g.file)||(job.workflow_version<2&&(Object.keys(job.narration).length||Object.values(job.generated).some(g=>g.generation_id||g.idempotency_key)))));}
-function planValid(){return Boolean(job?.storyboard&&job.storyboard.scenes.every(s=>s.text.trim().length>0&&(job.domain!=='stay-silent'||s.text.trim().split('\n').length===2&&s.text.trim().split('\n').every(line=>line.trim().length>0&&line.trim().length<=18)))&&job.storyboard.motion.every(m=>m.prompt.trim().length>0&&m.prompt.trim().length<=2000)&&(job.storyboard.segments||[]).every(segmentValid));}
+function planValid(){return Boolean(job?.storyboard&&job.storyboard.scenes.every(s=>job.domain==='stay-silent'?(!s.text.trim()||s.text.trim().split('\n').length===2&&s.text.trim().split('\n').every(line=>line.trim().length>0&&line.trim().length<=18)):s.text.trim().length>0)&&job.storyboard.motion.every(m=>m.prompt.trim().length>0&&m.prompt.trim().length<=2000)&&(job.storyboard.segments||[]).every(segmentValid));}
 function planChanged(){dirtyScript=true;drawStatus();}
 function drawScript(){
   const panel=$('storyboard');panel.replaceChildren();
@@ -278,7 +278,7 @@ function drawScript(){
     const row=document.createElement('div');row.className='scene';
     const number=document.createElement('span');number.className='scene-number';number.textContent=String(index+1).padStart(2,'0');
     const body=document.createElement('div');body.className='scene-body';
-    const text=document.createElement('textarea');text.value=scene.text;text.maxLength=160;text.disabled=planLocked();text.setAttribute('aria-label',`${index+1}번 장면 대본`);
+    const text=document.createElement('textarea');text.value=scene.text;text.maxLength=160;text.disabled=planLocked();text.setAttribute('aria-label',`${index+1}번 장면 대본`);if(job.domain==='stay-silent')text.placeholder='비워두면 자막 없이 2초간 영상만 재생됩니다.';
     text.oninput=()=>{scene.text=text.value;planChanged();if(currentScene()===scene){$('captionText').value=text.value;queuePreview();}};
     const info=document.createElement('small');info.textContent=(job.storyboard.segments?.length?`영상 구간 ${scene.photos.length}개`:'사진 '+scene.photos.map(n=>n+1).join(', '))+(hasNarration()?' · 음성과 화면 자막에 같은 문장 사용':' · 2초 · 두 줄 자막 · 줄마다 18자 이하'+(index===job.storyboard.scenes.length-1?' · 둘째 줄은 댓글 남겨주세요로 저장됩니다.':''))+(job.storyboard.motion.some(m=>m.photos.some(p=>scene.photos.includes(p)))?' · 움직임 포함':'');
     body.append(text,info);if(job.storyboard.segments?.length)body.append(segmentRows(scene,index));if(hasNarration())body.append(mediaControls('voice',index));row.append(number,body);panel.append(row);
@@ -608,7 +608,7 @@ function mediaControls(kind,index){
 for(const radio of document.querySelectorAll('input[name=compositionMode]'))radio.onchange=()=>{$('aiControls').hidden=compositionMode()!=='ai';$('compositionHelp').textContent=compositionMode()==='ai'?(domainInfo()?.ui.ai_help||''):'선택한 순서를 그대로 사용합니다. 사진을 끌거나 이동 버튼으로 순서를 바꾸세요.';drawStatus();};
 $('targetCount').oninput=drawStatus;
 for(const id of [...numericControls,...numericControls.map(id=>id+'Input'),'color','outline','bgOpacity','shadow','speed','captionAlign'])$(id).addEventListener('input',()=>{if(job)dirtyStyle=true;drawStatus();});
-$('captionText').addEventListener('input',()=>{const scene=currentScene();if(scene&&!planLocked()&&$('captionText').value.trim()){scene.text=$('captionText').value;planChanged();drawScript();}});
+$('captionText').addEventListener('input',()=>{const scene=currentScene();if(scene&&!planLocked()){scene.text=$('captionText').value;planChanged();drawScript();}});
 $('recommend').onclick=action(async()=>{if(!$('targetCount').validity.valid)throw new Error('추천 장수는 1~60장입니다.');await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();job=await api('/api/composition',{job_id:job?.id,collection_id:collection?.id,photos:[...collectionSelected],mode:'ai',target_count:Number($('targetCount').value)});collectionSelected.clear();drawCollection();job=await api('/api/jobs/'+job.id);});});
 $('removeCandidates').onclick=action(async()=>{const active=new Set((job?.photos||[]).map(p=>p.sha256)),inUse=[...candidateSelected].filter(id=>active.has(id)).length;if(!window.confirm(`선택한 ${candidateSelected.size}장을 후보에서 제거할까요? AI 추천과 구성 선택에 더 이상 사용하지 않습니다.`+(inUse?`\n현재 영상에 쓰인 ${inUse}장도 영상 구성에서 빠집니다.`+(job.storyboard?' 대본은 다시 만들어야 합니다.':''):'')))return;await planTransaction(async()=>{if(hasUnsavedEdits())await persistEdits();job=await api(`/api/jobs/${job.id}/candidates/remove`,{ids:[...candidateSelected]});candidateSelected.clear();await loadJob(job.id);});});
 $('applyCandidates').onclick=action(async()=>{if(!confirmDiscard())return;await planTransaction(async()=>{job=await api('/api/composition',{job_id:job.id,mode:'manual',photos:[...candidateSelected]});dirtyScript=dirtyStyle=dirtyFacts=false;candidateSelected.clear();await loadJob(job.id);});});
